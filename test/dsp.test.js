@@ -13,6 +13,9 @@ import {
   chainText,
   clamp01,
   defaultKnobPosition,
+  knobNudge,
+  knobRepeatDelay,
+  knobStep,
   driveMakeup,
   isDoubleTap,
   formatGainDb,
@@ -43,7 +46,26 @@ test("storage key follows the display name", () => {
   assert.equal(storageKeyFor("Effects Lab"), "effects-lab:v1");
 });
 
-test("double-tap timing and knob defaults", () => {
+test("step size, hold acceleration, and knob defaults", () => {
+  assert.equal(knobStep("global", "input"), 0.04);
+  assert.equal(knobStep("delay", "time"), 0.04);
+  assert.equal(knobStep("reverb", "decay"), 0.05);
+  assert.ok(knobStep("reverb", "mix") >= 0.04 && knobStep("reverb", "mix") <= 0.08);
+  const unity = defaultKnobPosition("global", "input");
+  const once = knobNudge(unity, "global", "input", 1, 0);
+  assert.ok(once - unity > 0.03 && once - unity < 0.06);
+  assert.ok(knobNudge(unity, "global", "input", 1, 8) - unity > (once - unity) * 1.5);
+  assert.equal(knobNudge(1, "reverb", "mix", 1, 0), 1);
+  assert.equal(knobNudge(0, "reverb", "mix", -1, 12), 0);
+  assert.ok(knobRepeatDelay(0) > knobRepeatDelay(6));
+  assert.ok(knobRepeatDelay(12) >= 45);
+  let pos = 0;
+  let taps = 0;
+  while (pos < 1 && taps < 40) {
+    pos = knobNudge(pos, "reverb", "decay", 1, 0);
+    taps += 1;
+  }
+  assert.ok(taps >= 10 && taps <= 30, "full range took " + taps + " taps");
   assert.equal(isDoubleTap(0, 100), false);
   assert.equal(isDoubleTap(1000, 1200), true);
   assert.equal(isDoubleTap(1000, 1000 + DOUBLE_TAP_MS + 5), false);

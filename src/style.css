@@ -286,17 +286,15 @@ select {
 select:disabled { opacity: 0.45; }
 
 .levels {
-  display: grid;
-  grid-template-columns: 84px 84px;
-  justify-content: start;
-  gap: 8px 12px;
-  align-items: end;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   margin-top: 16px;
 }
 
-.meter-block { grid-column: 1 / -1; min-width: 0; }
+.meter-block { min-width: 0; }
 
-#inputSlot, #masterSlot { width: 84px; }
+#inputSlot, #masterSlot { width: 100%; }
 
 .meter-block span, .knob-label {
   display: block;
@@ -478,21 +476,27 @@ select:disabled { opacity: 0.45; }
 }
 
 .knobs {
-  display: grid;
-  gap: 6px;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
-
-.knobs-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-.knobs-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.knobs-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
 .knob {
   width: 100%;
-  max-width: 92px;
-  text-align: center;
-  touch-action: manipulation;
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-areas:
+    "dial label"
+    "dial value"
+    "steps steps"
+    "extra extra";
+  gap: 0 10px;
+  align-items: center;
+  text-align: left;
+  pointer-events: none;
 }
+
+.knob-steps, .knob .tap { pointer-events: auto; }
 
 .knob.flash .knob-ring {
   box-shadow: 0 0 0 3px var(--gold);
@@ -519,10 +523,39 @@ select:disabled { opacity: 0.45; }
   padding: 0 12px;
 }
 
+.knob-steps {
+  grid-area: steps;
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.knob-steps button {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 234, 215, 0.22);
+  background: #2a2622;
+  color: var(--cream);
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.knob-steps button[data-step="0"] {
+  background: transparent;
+  color: var(--gold);
+}
+
 .knob-ring {
-  width: 68px;
-  height: 68px;
-  margin: 0 auto;
+  grid-area: dial;
+  width: 52px;
+  height: 52px;
+  margin: 0;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -535,8 +568,8 @@ select:disabled { opacity: 0.45; }
 }
 
 .knob-dial {
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   position: relative;
   background: radial-gradient(circle at 38% 30%, #6e675f, #221f1c 64%, #10100e);
@@ -547,28 +580,34 @@ select:disabled { opacity: 0.45; }
 .pointer {
   position: absolute;
   left: 50%;
-  top: 6px;
+  top: 5px;
   width: 3px;
-  height: 15px;
+  height: 12px;
   margin-left: -1.5px;
   border-radius: 2px;
   background: var(--cream);
 }
 
+.knob-label { grid-area: label; text-align: left; }
+
 .knob-value {
-  margin-top: 4px;
+  grid-area: value;
+  margin-top: 0;
   font-variant-numeric: tabular-nums;
-  font-size: 0.78rem;
+  font-size: 1rem;
   min-height: 1.1em;
+  text-align: left;
 }
 
 .tap {
-  margin-top: 4px;
-  min-height: 32px;
+  grid-area: extra;
+  margin-top: 8px;
+  min-height: 44px;
   width: 100%;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid rgba(243, 234, 215, 0.2);
   background: #1c1a17;
+  touch-action: manipulation;
 }
 
 .more-panel { margin-top: 8px; }
@@ -671,7 +710,5 @@ select:disabled { opacity: 0.45; }
 }
 
 @media (max-width: 360px) {
-  .knob-ring { width: 58px; height: 58px; }
-  .knob-dial { width: 44px; height: 44px; }
   h1 { font-size: 1.55rem; }
 }

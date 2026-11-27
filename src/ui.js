@@ -64,9 +64,6 @@ function paintFromState() {
     const labelEl = el.querySelector(".knob-label");
     if (valueEl) valueEl.textContent = text;
     if (labelEl) labelEl.textContent = label;
-    el.setAttribute("aria-valuenow", String(Math.round(clamp01(knob) * 100)));
-    el.setAttribute("aria-valuetext", text);
-    el.setAttribute("aria-label", label);
   }
 }
 
@@ -195,7 +192,7 @@ function paintRecord() {
   if (!currentTake) return;
   const seconds = currentTake.samples.length / currentTake.sampleRate;
   const loopOn = currentTake.loop !== false;
-  document.getElementById("takeHint").textContent = clock(seconds) + " recorded. It loops through the pedals. Turn a knob and you hear it on the next pass.";
+  document.getElementById("takeHint").textContent = clock(seconds) + " recorded. It loops through the pedals. + and − change the sound while it plays.";
   document.getElementById("playTake").classList.toggle("on", nowPlaying === "take");
   document.getElementById("playTake").disabled = seconds < 0.05;
   const loopBtn = document.getElementById("takeLoop");
@@ -228,10 +225,15 @@ function knobMarkup(pedal, param, extra) {
   const knob = clamp01(readKnob(pedal, param));
   const label = knobLabel(pedal, param);
   const text = knobText(pedal, param, knob);
-  return '<div class="knob" data-pedal="' + pedal + '" data-param="' + param + '" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(knob * 100) + '" aria-valuetext="' + esc(text) + '" aria-label="' + esc(label) + '" style="--p:' + knob + '">'
-    + '<div class="knob-ring"><div class="knob-dial"><span class="pointer"></span></div></div>'
-    + '<div class="knob-value">' + esc(text) + "</div>"
+  return '<div class="knob" data-pedal="' + pedal + '" data-param="' + param + '" style="--p:' + knob + '">'
+    + '<div class="knob-ring" aria-hidden="true"><div class="knob-dial"><span class="pointer"></span></div></div>'
     + '<div class="knob-label">' + esc(label) + "</div>"
+    + '<div class="knob-value">' + esc(text) + "</div>"
+    + '<div class="knob-steps">'
+    + '<button type="button" data-step="-1" aria-label="Decrease ' + esc(label) + '">−</button>'
+    + '<button type="button" data-step="0" aria-label="Reset ' + esc(label) + ' to default">=</button>'
+    + '<button type="button" data-step="1" aria-label="Increase ' + esc(label) + '">+</button>'
+    + "</div>"
     + (extra || "")
     + "</div>";
 }
@@ -308,7 +310,38 @@ function resetKnob(pedal, param, el) {
   node._flash = setTimeout(() => node.classList.remove("flash"), 700);
 }
 
-let lastKnobTap = { key: "", t: 0 };
+let holdTimer = 0;
+
+function stopHold() {
+  clearTimeout(holdTimer);
+  holdTimer = 0;
+}
+
+function startHold(btn) {
+  stopHold();
+  const el = btn.closest(".knob");
+  if (!el) return;
+  const pedal = el.dataset.pedal;
+  const param = el.dataset.param;
+  const dir = Number(btn.dataset.step);
+  if (dir === 0) {
+    resetKnob(pedal, param, el);
+    return;
+  }
+  let ticks = 0;
+  const fire = () => {
+    writeKnob(pedal, param, knobNudge(readKnob(pedal, param), pedal, param, dir, ticks));
+    ticks += 1;
+  };
+  fire();
+  const arm = (index) => {
+    holdTimer = setTimeout(() => {
+      fire();
+      arm(index + 1);
+    }, knobRepeatDelay(index));
+  };
+  arm(0);
+}
 
 function writeKnob(pedal, param, value) {
   const v = clamp01(value);
@@ -824,72 +857,16 @@ function init() {
   board.addEventListener("pointercancel", () => { drag = null; });
 
   document.addEventListener("pointerdown", (e) => {
-    if (e.target.closest && e.target.closest(".tap")) return;
-    const el = e.target.closest && e.target.closest(".knob");
-    if (!el) return;
+    const btn = e.target.closest && e.target.closest(".knob-steps button");
+    if (!btn || (e.button != null && e.button !== 0)) return;
     e.preventDefault();
-    const pedal = el.dataset.pedal;
-    const param = el.dataset.param;
-    const key = pedal + ":" + param;
-    const now = performance.now();
-    if (lastKnobTap.key === key && isDoubleTap(lastKnobTap.t, now)) {
-      lastKnobTap = { key: "", t: 0 };
-      resetKnob(pedal, param, el);
-      return;
-    }
-    const start = readKnob(pedal, param);
-    const x0 = e.clientX;
-    const y0 = e.clientY;
-    let moved = false;
-    const move = (ev) => {
-      const dy = y0 - ev.clientY;
-      const dx = ev.clientX - x0;
-      if (Math.hypot(dx, dy) > 8) moved = true;
-      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
-      const scale = ev.shiftKey ? 1 / 420 : 1 / 150;
-      writeKnob(pedal, param, start + delta * scale);
-    };
-    const up = (ev) => {
-      const dist = Math.hypot((ev.clientX || x0) - x0, (ev.clientY || y0) - y0);
-      if (!moved && dist < 8) lastKnobTap = { key, t: performance.now() };
-      else lastKnobTap = { key: "", t: 0 };
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      window.removeEventListener("pointercancel", up);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    window.addEventListener("pointercancel", up);
+    try { btn.setPointerCapture(e.pointerId); } catch (err) { /* already */ }
+    startHold(btn);
   });
-  document.addEventListener("dblclick", (e) => {
-    const el = e.target.closest && e.target.closest(".knob");
-    if (!el) return;
-    e.preventDefault();
-    resetKnob(el.dataset.pedal, el.dataset.param, el);
-  });
-
-  document.addEventListener("wheel", (e) => {
-    const el = e.target.closest && e.target.closest(".knob");
-    if (!el || (e.target.closest && e.target.closest(".tap"))) return;
-    e.preventDefault();
-    const dir = e.deltaY < 0 ? 1 : -1;
-    writeKnob(el.dataset.pedal, el.dataset.param, readKnob(el.dataset.pedal, el.dataset.param) + dir * 0.03);
-  }, { passive: false });
-
-  document.addEventListener("keydown", (e) => {
-    const el = e.target.closest && e.target.closest(".knob");
-    if (!el) return;
-    let delta = 0;
-    if (e.key === "ArrowUp" || e.key === "ArrowRight") delta = e.shiftKey ? 0.01 : 0.02;
-    else if (e.key === "ArrowDown" || e.key === "ArrowLeft") delta = e.shiftKey ? -0.01 : -0.02;
-    else if (e.key === "PageUp") delta = 0.1;
-    else if (e.key === "PageDown") delta = -0.1;
-    else if (e.key === "Home") delta = -1;
-    else if (e.key === "End") delta = 1;
-    else return;
-    e.preventDefault();
-    const cur = readKnob(el.dataset.pedal, el.dataset.param);
-    writeKnob(el.dataset.pedal, el.dataset.param, delta === 1 ? 1 : delta === -1 ? 0 : cur + delta);
+  document.addEventListener("pointerup", stopHold);
+  document.addEventListener("pointercancel", stopHold);
+  document.addEventListener("contextmenu", (e) => {
+    if (e.target.closest && e.target.closest(".knob-steps")) e.preventDefault();
   });
 
   window.matchMedia("(min-width: 900px)").addEventListener("change", nudgeGlyphs);
