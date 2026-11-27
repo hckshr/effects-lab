@@ -1,0 +1,3038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#100e0c" />
+  <meta name="apple-mobile-web-app-title" content="Effects Lab" />
+  <meta name="description" content="A simple guitar pedalboard in the browser: drive, modulation, filter, delay, and reverb." />
+  <title>Effects Lab</title>
+  <style>:root {
+  color-scheme: dark;
+  --bg: #100e0c;
+  --cream: #f3ead7;
+  --muted: #cbbfaa;
+  --gold: #e4c27a;
+  --ink: #1b140e;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; }
+
+body {
+  background:
+    radial-gradient(1200px 500px at 50% -10%, rgba(228, 194, 122, 0.08), transparent 50%),
+    var(--bg);
+  color: var(--cream);
+  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.35;
+  min-height: 100%;
+}
+
+button, select { font: inherit; color: inherit; }
+
+button { cursor: pointer; }
+
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.wrap {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 16px 14px calc(24px + env(safe-area-inset-bottom));
+}
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.live-flag {
+  margin: 0;
+  color: #b7e2b0;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.tip {
+  margin: 8px 0 14px;
+  color: var(--muted);
+  max-width: 40rem;
+}
+
+#start {
+  width: 100%;
+  min-height: 76px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 1.5rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 0 #6d6456;
+}
+
+#start:active { transform: translateY(2px); box-shadow: 0 6px 0 #6d6456; }
+
+#start.is-on {
+  min-height: 48px;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  background: #243127;
+  color: #c6ecc0;
+  box-shadow: none;
+}
+
+#status {
+  min-height: 1.3em;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.source {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.source button, .presets button, .add-row button, .chip, .nudge, .remove, .more-btn, .tap {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.source button {
+  min-height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.source button.on {
+  background: var(--cream);
+  color: var(--ink);
+  border-color: transparent;
+}
+
+.device-label {
+  display: block;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+select {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 6px;
+  padding: 0 12px;
+  font-size: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+select:disabled { opacity: 0.45; }
+
+.levels {
+  display: grid;
+  grid-template-columns: 84px 84px;
+  justify-content: start;
+  gap: 8px 12px;
+  align-items: end;
+  margin-top: 16px;
+}
+
+.meter-block { grid-column: 1 / -1; min-width: 0; }
+
+#inputSlot, #masterSlot { width: 84px; }
+
+.meter-block span, .knob-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.meter-block span { text-align: left; margin-bottom: 6px; }
+
+.meter {
+  height: 26px;
+  border-radius: 999px;
+  background: #6a5d4c;
+  border: 1px solid rgba(228, 194, 122, 0.45);
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+#meterFill {
+  width: 0;
+  height: 100%;
+  background: #8ee0a8;
+  border-radius: inherit;
+}
+
+#meterFill[data-hot="warm"] { background: #e0b15a; }
+#meterFill[data-hot="hot"] { background: #e15b4c; }
+
+.presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 4px;
+  margin: 0;
+}
+
+.presets button {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.presets button.on {
+  background: var(--cream);
+  color: var(--ink);
+  border-color: transparent;
+}
+
+.board-wrap {
+  margin-top: 8px;
+  padding: 14px 12px 12px;
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+    #1a1714;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 40px rgba(0, 0, 0, 0.28);
+}
+
+.chain {
+  margin: 0 0 12px;
+  color: var(--cream);
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty, .add-all { color: var(--muted); margin: 8px 4px; }
+
+.pedal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: #121110;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+  user-select: none;
+  touch-action: pan-y;
+}
+
+.pedal.engaged { box-shadow: 0 0 0 1px rgba(228, 194, 122, 0.45), 0 12px 28px rgba(0, 0, 0, 0.35); }
+
+.pedal-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 76px;
+  padding: 10px 12px 10px 16px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.pedal-top:active { cursor: grabbing; }
+
+.c-drive .pedal-top { background: linear-gradient(180deg, #a03b36, #7c2c28); }
+.c-mod .pedal-top { background: linear-gradient(180deg, #3a62a8, #27457a); }
+.c-filter .pedal-top { background: linear-gradient(180deg, #c4842e, #8d5d18); }
+.c-delay .pedal-top { background: linear-gradient(180deg, #2a8a5a, #17643e); }
+.c-reverb .pedal-top { background: linear-gradient(180deg, #267887, #164852); }
+
+.drag {
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: -0.2em;
+  font-size: 0.85rem;
+}
+
+.pedal-top h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.stomp {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  flex: 0 0 60px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 32%, #6a655c, #1a1916 68%);
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.22), 0 3px 0 #0b0a09;
+}
+
+.stomp.on {
+  box-shadow: 0 0 0 3px rgba(255, 92, 61, 0.7), inset 0 2px 2px rgba(255, 255, 255, 0.22), 0 3px 0 #0b0a09;
+}
+
+.led {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  left: 50%;
+  top: 9px;
+  transform: translateX(-50%);
+  background: #3a221c;
+}
+
+.stomp.on .led {
+  background: #ff5a3c;
+  box-shadow: 0 0 8px #ff5a3c;
+}
+
+.face { padding: 12px 10px 4px; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.chip {
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(243, 234, 215, 0.18);
+  background: transparent;
+  color: var(--cream);
+  font-size: 0.8rem;
+}
+
+.chip.on {
+  background: var(--cream);
+  color: var(--ink);
+  border-color: transparent;
+}
+
+.knobs {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.knobs-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.knobs-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.knobs-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.knob {
+  width: 100%;
+  max-width: 92px;
+  text-align: center;
+  touch-action: none;
+}
+
+.knob-ring {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: conic-gradient(from 225deg,
+    var(--gold) 0deg,
+    var(--gold) calc(var(--p, 0) * 270deg),
+    rgba(255, 255, 255, 0.1) calc(var(--p, 0) * 270deg),
+    rgba(255, 255, 255, 0.1) 270deg,
+    transparent 270deg);
+}
+
+.knob-dial {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(circle at 38% 30%, #6e675f, #221f1c 64%, #10100e);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.28), 0 2px 4px rgba(0, 0, 0, 0.45);
+  transform: rotate(calc(-135deg + var(--p, 0) * 270deg));
+}
+
+.pointer {
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 3px;
+  height: 15px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--cream);
+}
+
+.knob-value {
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  min-height: 1.1em;
+}
+
+.tap {
+  margin-top: 4px;
+  min-height: 32px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid rgba(243, 234, 215, 0.2);
+  background: #1c1a17;
+}
+
+.more-panel { margin-top: 8px; }
+
+.pedal-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 12px;
+  margin-top: auto;
+}
+
+.more-btn, .remove {
+  min-height: 40px;
+  padding: 0 8px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.nudges {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.nudge {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  border: 1px solid rgba(243, 234, 215, 0.28);
+  background: #2a2722;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.chev {
+  width: 9px;
+  height: 9px;
+  border-top: 2px solid var(--cream);
+  border-right: 2px solid var(--cream);
+  display: block;
+}
+
+.nudge[data-dir="-1"] .chev { transform: rotate(-45deg); }
+.nudge[data-dir="1"] .chev { transform: rotate(135deg); }
+.board.horizontal .nudge[data-dir="-1"] .chev { transform: rotate(-135deg); }
+.board.horizontal .nudge[data-dir="1"] .chev { transform: rotate(45deg); }
+
+.nudge:disabled { opacity: 0.28; }
+
+.add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.add-row button {
+  min-height: 42px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px dashed rgba(243, 234, 215, 0.28);
+  background: transparent;
+}
+
+.screw {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #f4efe4, #6a655c 46%, #262421 74%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.s1 { top: 8px; left: 8px; }
+.s2 { bottom: 8px; left: 8px; }
+.s3 { bottom: 8px; right: 8px; }
+
+@media (min-width: 900px) {
+  .controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+    gap: 22px;
+    align-items: end;
+  }
+
+  .levels { margin-top: 0; justify-content: end; }
+
+  .board {
+    flex-direction: row;
+    align-items: stretch;
+    overflow-x: auto;
+    padding-bottom: 6px;
+  }
+
+  .pedal { flex: 0 0 280px; width: 280px; }
+}
+
+@media (max-width: 360px) {
+  .knob-ring { width: 58px; height: 58px; }
+  .knob-dial { width: 44px; height: 44px; }
+  h1 { font-size: 1.55rem; }
+}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="title-row">
+        <h1 id="appTitle">Effects Lab</h1>
+        <p id="live" class="live-flag" hidden>Live</p>
+      </div>
+      <p id="tip" class="tip">Wear headphones if you use the phone mic, so the sound doesn't feed back.</p>
+      <div class="controls">
+        <div>
+          <button id="start" type="button">Start</button>
+          <p id="status" role="status"></p>
+          <div class="source" role="group" aria-label="Sound source">
+            <button type="button" data-source="guitar" aria-pressed="true">Guitar input</button>
+            <button type="button" data-source="test" aria-pressed="false">Test sound</button>
+          </div>
+          <label class="device-label" for="device">Input</label>
+          <select id="device" aria-label="Audio input"></select>
+        </div>
+        <div class="levels">
+          <div class="meter-block">
+            <span>Level</span>
+            <div id="meter" class="meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="meterFill"></div>
+            </div>
+          </div>
+          <div id="inputSlot"></div>
+          <div id="masterSlot"></div>
+        </div>
+      </div>
+    </header>
+    <div id="presets" class="presets" role="group" aria-label="Presets"></div>
+    <section class="board-wrap" aria-label="Pedalboard">
+      <p id="chainLabel" class="chain"></p>
+      <div id="board" class="board"></div>
+      <div id="addRow" class="add-row"></div>
+    </section>
+  </main>
+  <script type="module">
+    const WORKLET_URL = "/worklet.js?v=3438d1d470";
+    // The name shown on the page. Change this, then run `node build.js`.
+// The Worker name and the workers.dev host are set in wrangler.toml.
+export const APP_CONFIG = {
+  name: "Effects Lab",
+};
+
+;
+// Knob mappings, presets, and chain helpers. No browser APIs.
+
+export const PEDAL_IDS = ["drive", "mod", "filter", "delay", "reverb"];
+
+export const MAX_DELAY_FEEDBACK = 0.82;
+export const MAX_FLANGER_FEEDBACK = 0.68;
+export const MAX_PHASER_FEEDBACK = 0.55;
+export const INPUT_GAIN_MAX = 3;
+export const DELAY_MIN = 0.04;
+export const DELAY_MAX = 1;
+
+const MOD_RATE = {
+  chorus: [0.15, 2.5],
+  phaser: [0.05, 4],
+  flanger: [0.08, 3],
+  tremolo: [1.2, 10],
+  vibrato: [2.2, 8],
+};
+
+const TYPES = {
+  drive: ["drive"],
+  mod: ["chorus", "phaser", "flanger", "tremolo", "vibrato"],
+  filter: ["wah", "lowpass", "highpass"],
+  delay: ["delay"],
+  reverb: ["room", "hall", "spring", "plate"],
+};
+
+const DEFAULT_TYPE = {
+  drive: "drive",
+  mod: "chorus",
+  filter: "wah",
+  delay: "delay",
+  reverb: "room",
+};
+
+export const DEFAULT_PARAMS = {
+  drive: { gain: 0.3, tone: 0.55, level: 0.7, mix: 1, fuzz: 0.2 },
+  mod: { rate: 0.35, depth: 0.4, mix: 0.5, color: 0.35, width: 0.75 },
+  filter: { freq: 0.45, resonance: 0.4, depth: 0.55, rate: 0.35, release: 0.4, mix: 1 },
+  delay: { time: 0.45, feedback: 0.35, mix: 0.3, tone: 0.45, modDepth: 0.1, modRate: 0.25, lowCut: 0.3 },
+  reverb: { decay: 0.4, mix: 0.3, tone: 0.55, predelay: 0.12, width: 0.85, mod: 0.3, size: 0.45 },
+};
+
+const LABELS = {
+  drive: { gain: "Gain", tone: "Tone", level: "Level", mix: "Blend", fuzz: "Fuzz" },
+  mod: { rate: "Rate", depth: "Depth", mix: "Mix", color: "Tone", width: "Width" },
+  filter: { freq: "Freq", resonance: "Reso", depth: "Depth", rate: "Rate", release: "Release", mix: "Blend" },
+  delay: { time: "Time", feedback: "Feedback", mix: "Mix", tone: "Tone", modDepth: "Wow", modRate: "Flutter", lowCut: "Low Cut" },
+  reverb: { decay: "Decay", mix: "Mix", tone: "Tone", predelay: "Pre-delay", width: "Width", mod: "Mod", size: "Size" },
+};
+
+export const PEDALS = {
+  drive: { name: "Drive", blend: "replace", main: ["gain", "tone", "level"], more: ["mix", "fuzz"], types: null },
+  mod: {
+    name: "Modulation",
+    blend: "replace",
+    main: ["rate", "depth", "mix", "color"],
+    more: ["width"],
+    types: [
+      { id: "chorus", label: "Chorus" },
+      { id: "phaser", label: "Phaser" },
+      { id: "flanger", label: "Flanger" },
+      { id: "tremolo", label: "Tremolo" },
+      { id: "vibrato", label: "Vibrato" },
+    ],
+  },
+  filter: {
+    name: "Filter",
+    blend: "replace",
+    main: ["freq", "resonance", "depth", "rate"],
+    more: ["release", "mix"],
+    types: [
+      { id: "wah", label: "Auto-Wah" },
+      { id: "lowpass", label: "Low Pass" },
+      { id: "highpass", label: "High Pass" },
+    ],
+  },
+  delay: {
+    name: "Delay",
+    blend: "add",
+    main: ["time", "feedback", "mix", "tone"],
+    more: ["modDepth", "modRate", "lowCut"],
+    types: null,
+    tap: true,
+  },
+  reverb: {
+    name: "Reverb",
+    blend: "add",
+    main: ["decay", "mix", "tone", "predelay"],
+    more: ["width", "mod", "size"],
+    types: [
+      { id: "room", label: "Room" },
+      { id: "hall", label: "Hall" },
+      { id: "spring", label: "Spring" },
+      { id: "plate", label: "Plate" },
+    ],
+  },
+};
+
+export const PRESETS = [
+  {
+    id: "clean-room",
+    name: "Clean Room",
+    order: ["reverb"],
+    pedals: {
+      reverb: { type: "room", params: { decay: 0.43, mix: 0.28, tone: 0.58, predelay: 0.16, width: 0.8, mod: 0.22, size: 0.4 } },
+    },
+  },
+  {
+    id: "surf",
+    name: "Surf Spring",
+    order: ["mod", "reverb"],
+    pedals: {
+      mod: { type: "tremolo", params: { rate: 0.74, depth: 0.62, mix: 0.9, color: 0.28, width: 0.35 } },
+      reverb: { type: "spring", params: { decay: 0.54, mix: 0.4, tone: 0.66, predelay: 0.06, width: 0.7, mod: 0.72, size: 0.35 } },
+    },
+  },
+  {
+    id: "big-hall",
+    name: "Big Hall",
+    order: ["reverb"],
+    pedals: {
+      reverb: { type: "hall", params: { decay: 0.83, mix: 0.4, tone: 0.46, predelay: 0.34, width: 1, mod: 0.28, size: 0.72 } },
+    },
+  },
+  {
+    id: "slapback",
+    name: "Slapback",
+    order: ["delay"],
+    pedals: {
+      delay: { params: { time: 0.314, feedback: 0.14, mix: 0.38, tone: 0.5, modDepth: 0.05, modRate: 0.3, lowCut: 0.28 } },
+    },
+  },
+  {
+    id: "ambient",
+    name: "Ambient Wash",
+    order: ["mod", "delay", "reverb"],
+    pedals: {
+      mod: { type: "chorus", params: { rate: 0.49, depth: 0.42, mix: 0.48, color: 0.62, width: 0.85 } },
+      delay: { params: { time: 0.75, feedback: 0.48, mix: 0.34, tone: 0.32, modDepth: 0.28, modRate: 0.22, lowCut: 0.4 } },
+      reverb: { type: "hall", params: { decay: 0.86, mix: 0.46, tone: 0.4, predelay: 0.28, width: 1, mod: 0.36, size: 0.8 } },
+    },
+  },
+  {
+    id: "crunch",
+    name: "Crunch",
+    order: ["drive", "reverb"],
+    pedals: {
+      drive: { params: { gain: 0.4, tone: 0.52, level: 0.62, mix: 0.85, fuzz: 0.22 } },
+      reverb: { type: "room", params: { decay: 0.36, mix: 0.22, tone: 0.5, predelay: 0.1, width: 0.75, mod: 0.18, size: 0.32 } },
+    },
+  },
+  {
+    id: "wah-funk",
+    name: "Wah Funk",
+    order: ["filter", "delay"],
+    pedals: {
+      filter: { type: "wah", params: { freq: 0.42, resonance: 0.58, depth: 0.75, rate: 0.32, release: 0.38, mix: 1 } },
+      delay: { params: { time: 0.48, feedback: 0.32, mix: 0.22, tone: 0.4, modDepth: 0.08, modRate: 0.25, lowCut: 0.35 } },
+    },
+  },
+];
+
+export function clamp(x, a, b) {
+  if (x < a) return a;
+  if (x > b) return b;
+  return x;
+}
+
+export function clamp01(x) {
+  return clamp(x, 0, 1);
+}
+
+export function logMap(k, min, max) {
+  return min * Math.pow(max / min, clamp01(k));
+}
+
+export function logUnmap(value, min, max) {
+  const v = clamp(value, min, max);
+  return Math.log(v / min) / Math.log(max / min);
+}
+
+export function knobFromDelaySeconds(sec) {
+  return logUnmap(sec, DELAY_MIN, DELAY_MAX);
+}
+
+export function reverbT60(k) {
+  return logMap(k, 0.25, 8);
+}
+
+export function reverbCutoff(k) {
+  return logMap(k, 900, 12000);
+}
+
+export function storageKeyFor(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + ":v1";
+}
+
+export function validType(id, type) {
+  return (TYPES[id] || []).includes(type);
+}
+
+export function reverbTypeIndex(type) {
+  const i = TYPES.reverb.indexOf(type);
+  return i < 0 ? 0 : i;
+}
+
+export function mapParam(pedal, param, knob, type) {
+  const k = clamp01(Number.isFinite(knob) ? knob : 0);
+  const key = pedal + "." + param;
+  if (key === "drive.gain") return 1 + k * 24;
+  if (key === "drive.tone") return logMap(k, 500, 6200);
+  if (key === "drive.level") return k * 1.5;
+  if (key === "drive.mix" || key === "drive.fuzz") return k;
+  if (key === "mod.rate") {
+    const range = MOD_RATE[type] || MOD_RATE.chorus;
+    return logMap(k, range[0], range[1]);
+  }
+  if (key === "mod.depth") {
+    if (type === "flanger") return 0.00025 + k * 0.0026;
+    if (type === "phaser") return 100 + k * 500;
+    if (type === "tremolo") return k;
+    if (type === "vibrato") return 0.0006 + k * 0.0032;
+    return 0.0008 + k * 0.0052;
+  }
+  if (key === "mod.mix" || key === "mod.width") return k;
+  if (key === "mod.color") {
+    if (type === "flanger") return k * MAX_FLANGER_FEEDBACK;
+    if (type === "phaser") return k * MAX_PHASER_FEEDBACK;
+    if (type === "tremolo") return k;
+    return logMap(k, 800, 9000);
+  }
+  if (key === "filter.freq") {
+    if (type === "wah") return logMap(k, 200, 480);
+    if (type === "highpass") return logMap(k, 50, 2800);
+    return logMap(k, 180, 7800);
+  }
+  if (key === "filter.range") return logMap(k, 700, 3400);
+  if (key === "filter.resonance") return type === "wah" ? 0.9 + k * 7.5 : 0.5 + k * 3.2;
+  if (key === "filter.depth") return k;
+  if (key === "filter.rate") return type === "wah" ? logMap(k, 0.004, 0.07) : logMap(k, 0.06, 6);
+  if (key === "filter.release") return logMap(k, 0.04, 0.55);
+  if (key === "filter.mix") return k;
+  if (key === "delay.time") return logMap(k, DELAY_MIN, DELAY_MAX);
+  if (key === "delay.feedback") return k * MAX_DELAY_FEEDBACK;
+  if (key === "delay.mix") return k;
+  if (key === "delay.tone") return logMap(k, 700, 6800);
+  if (key === "delay.modDepth") return k * 0.004;
+  if (key === "delay.modRate") return logMap(k, 0.12, 4);
+  if (key === "delay.lowCut") return logMap(k, 40, 420);
+  if (key === "reverb.decay") return reverbT60(k);
+  if (key === "reverb.tone") return reverbCutoff(k);
+  if (key === "reverb.predelay") return k * 0.12;
+  if (key === "reverb.size") return 0.7 + k * 0.65;
+  if (key === "reverb.mix" || key === "reverb.width" || key === "reverb.mod") return k;
+  return k;
+}
+
+function hzText(n) {
+  if (n < 10) return n.toFixed(2) + " Hz";
+  if (n < 100) return n.toFixed(1) + " Hz";
+  return Math.round(n) + " Hz";
+}
+
+function msText(sec) {
+  return Math.round(sec * 1000) + " ms";
+}
+
+function pctText(k) {
+  return Math.round(clamp01(k) * 100) + "%";
+}
+
+export function formatParam(pedal, param, knob, type) {
+  const v = mapParam(pedal, param, knob, type);
+  if (pedal === "drive" && param === "gain") {
+    const db = 20 * Math.log10(Math.max(1e-4, v));
+    return (db >= 0 ? "+" : "") + db.toFixed(1) + " dB";
+  }
+  if (pedal === "drive" && param === "tone") return hzText(v);
+  if (pedal === "drive" && param === "level") return pctText(knob);
+  if (pedal === "mod" && param === "rate") return hzText(v);
+  if (pedal === "mod" && param === "depth" && type === "phaser") return hzText(v);
+  if (pedal === "mod" && param === "depth" && type === "tremolo") return pctText(v);
+  if (pedal === "mod" && param === "depth") return (v * 1000).toFixed(1) + " ms";
+  if (pedal === "mod" && param === "color" && (type === "phaser" || type === "flanger" || type === "tremolo")) return pctText(knob);
+  if (pedal === "mod" && param === "color") return hzText(v);
+  if (pedal === "filter" && param === "freq") return hzText(v);
+  if (pedal === "filter" && param === "rate" && type === "wah") return msText(v);
+  if (pedal === "filter" && param === "rate") return hzText(v);
+  if (pedal === "filter" && param === "release") return msText(v);
+  if (pedal === "filter" && param === "resonance") return v.toFixed(1);
+  if (pedal === "delay" && param === "time") return v < 1 ? msText(v) : v.toFixed(2) + " s";
+  if (pedal === "delay" && param === "tone" || pedal === "delay" && param === "lowCut") return hzText(v);
+  if (pedal === "delay" && param === "modDepth") return (v * 1000).toFixed(1) + " ms";
+  if (pedal === "delay" && param === "modRate") return hzText(v);
+  if (pedal === "reverb" && param === "decay") return v.toFixed(1) + " s";
+  if (pedal === "reverb" && param === "tone") return hzText(v);
+  if (pedal === "reverb" && param === "predelay") return msText(v);
+  if (pedal === "reverb" && param === "size") return v.toFixed(2) + "×";
+  return pctText(knob);
+}
+
+export function paramLabel(pedal, param, type) {
+  if (pedal === "mod" && param === "color") {
+    if (type === "tremolo") return "Shape";
+    if (type === "phaser" || type === "flanger") return "Feedback";
+    return "Tone";
+  }
+  if (pedal === "filter" && param === "rate") return type === "wah" ? "Attack" : "Rate";
+  if (pedal === "filter" && param === "depth") return type === "wah" ? "Depth" : "Sweep";
+  if (pedal === "filter" && param === "freq") return type === "wah" ? "Range" : "Freq";
+  return LABELS[pedal][param];
+}
+
+export function displayName(id, type) {
+  if (id === "mod") {
+    return { chorus: "Chorus", phaser: "Phaser", flanger: "Flanger", tremolo: "Tremolo", vibrato: "Vibrato" }[type] || "Modulation";
+  }
+  if (id === "filter") {
+    return { wah: "Auto-Wah", lowpass: "Low Pass", highpass: "High Pass" }[type] || "Filter";
+  }
+  if (id === "reverb") {
+    return { room: "Room", hall: "Hall", spring: "Spring", plate: "Plate" }[type] || "Reverb";
+  }
+  if (id === "drive") return "Drive";
+  if (id === "delay") return "Delay";
+  return id;
+}
+
+export function chainText(state) {
+  if (!state.order.length) return "No pedals — dry signal";
+  return state.order.map((id) => displayName(id, state.pedals[id].type)).join(" → ");
+}
+
+export function blendGains(mode, enabled, mix) {
+  const m = clamp01(mix);
+  if (!enabled) return { dry: 1, wet: 0 };
+  if (mode === "add") return { dry: 1, wet: m };
+  const theta = m * Math.PI / 2;
+  return { dry: Math.cos(theta), wet: Math.sin(theta) };
+}
+
+export function driveMakeup(preGain, fuzz) {
+  const f = clamp01(fuzz);
+  const soft = Math.tanh(preGain * 2.4);
+  const hard = Math.min(1, Math.tanh(preGain * 6) * 1.05);
+  const peak = soft * (1 - f) + hard * f;
+  return 1 / Math.max(0.22, peak);
+}
+
+export function formatGainDb(gain) {
+  if (!(gain > 0.001)) return "Off";
+  const db = 20 * Math.log10(gain);
+  return (db >= 0 ? "+" : "") + db.toFixed(1) + " dB";
+}
+
+export function meterPercent(rms) {
+  const db = 20 * Math.log10(Math.max(rms, 1e-8));
+  return clamp((db + 42) / 42, 0, 1);
+}
+
+function makeCurve(fn) {
+  const n = 2049;
+  const c = new Float32Array(n);
+  for (let i = 0; i < n; i++) c[i] = fn((i / (n - 1)) * 2 - 1);
+  return c;
+}
+
+export function makeSoftCurve() {
+  return makeCurve((x) => Math.tanh(x * 2.4));
+}
+
+export function makeHardCurve() {
+  return makeCurve((x) => {
+    const y = Math.tanh(x * 8);
+    const asym = Math.tanh((x + 0.18) * 6.5);
+    return Math.max(-0.98, Math.min(0.98, y * 0.62 + asym * 0.38));
+  });
+}
+
+export function makeSafetyCurve() {
+  const drive = 1.55;
+  const norm = Math.tanh(drive);
+  return makeCurve((x) => Math.tanh(x * drive) / norm);
+}
+
+export function makeTremCurve() {
+  return makeCurve((x) => Math.tanh(x * 5));
+}
+
+export function moveItem(list, index, dir) {
+  const next = list.slice();
+  const j = index + dir;
+  if (index < 0 || index >= next.length || j < 0 || j >= next.length) return next;
+  const [item] = next.splice(index, 1);
+  next.splice(j, 0, item);
+  return next;
+}
+
+export function reorder(list, id, targetIndex) {
+  const next = list.filter((x) => x !== id);
+  const i = Math.max(0, Math.min(next.length, targetIndex));
+  next.splice(i, 0, id);
+  return next;
+}
+
+export function freshState() {
+  const pedals = {};
+  for (const id of PEDAL_IDS) {
+    pedals[id] = {
+      onBoard: false,
+      enabled: false,
+      type: DEFAULT_TYPE[id],
+      more: false,
+      params: Object.assign({}, DEFAULT_PARAMS[id]),
+    };
+  }
+  return {
+    source: "guitar",
+    deviceId: "",
+    inputGain: 1,
+    master: 0.8,
+    order: [],
+    preset: null,
+    pedals,
+  };
+}
+
+export function applyPreset(state, presetId) {
+  const preset = PRESETS.find((p) => p.id === presetId);
+  if (!preset) return state;
+  const next = freshState();
+  next.source = state.source;
+  next.deviceId = state.deviceId;
+  next.inputGain = state.inputGain;
+  next.master = state.master;
+  next.order = preset.order.slice();
+  next.preset = preset.id;
+  for (const id of preset.order) {
+    const src = preset.pedals[id] || {};
+    const pedal = next.pedals[id];
+    pedal.onBoard = true;
+    pedal.enabled = true;
+    if (src.type && validType(id, src.type)) pedal.type = src.type;
+    pedal.params = Object.assign({}, DEFAULT_PARAMS[id], src.params || {});
+    for (const key of Object.keys(pedal.params)) pedal.params[key] = clamp01(pedal.params[key]);
+  }
+  return next;
+}
+
+export function initialState() {
+  return applyPreset(freshState(), "clean-room");
+}
+
+export function serialize(state) {
+  const pedals = {};
+  for (const id of PEDAL_IDS) {
+    const p = state.pedals[id];
+    pedals[id] = { enabled: !!p.enabled, type: p.type, more: !!p.more, params: Object.assign({}, p.params) };
+  }
+  return {
+    v: 1,
+    source: state.source,
+    deviceId: state.deviceId || "",
+    inputGain: state.inputGain,
+    master: state.master,
+    order: state.order.slice(),
+    preset: state.preset,
+    pedals,
+  };
+}
+
+export function hydrate(raw) {
+  if (!raw || typeof raw !== "object") return initialState();
+  const next = freshState();
+  next.source = raw.source === "test" ? "test" : "guitar";
+  next.deviceId = typeof raw.deviceId === "string" ? raw.deviceId.slice(0, 256) : "";
+  const ig = Number(raw.inputGain);
+  next.inputGain = Number.isFinite(ig) ? clamp(ig, 0, INPUT_GAIN_MAX) : 1;
+  const m = Number(raw.master);
+  next.master = Number.isFinite(m) ? clamp(m, 0, 1) : 0.8;
+  const saved = raw.pedals && typeof raw.pedals === "object" ? raw.pedals : {};
+  for (const id of PEDAL_IDS) {
+    const src = saved[id];
+    if (!src || typeof src !== "object") continue;
+    const pedal = next.pedals[id];
+    if (typeof src.type === "string" && validType(id, src.type)) pedal.type = src.type;
+    pedal.more = !!src.more;
+    pedal.enabled = !!src.enabled;
+    if (src.params && typeof src.params === "object") {
+      for (const key of Object.keys(DEFAULT_PARAMS[id])) {
+        const n = Number(src.params[key]);
+        if (Number.isFinite(n)) pedal.params[key] = clamp01(n);
+      }
+    }
+  }
+  const order = [];
+  const list = Array.isArray(raw.order) ? raw.order : [];
+  for (const id of list) {
+    if (PEDAL_IDS.includes(id) && !order.includes(id)) order.push(id);
+  }
+  next.order = order;
+  for (const id of PEDAL_IDS) {
+    next.pedals[id].onBoard = order.includes(id);
+    if (!order.includes(id)) next.pedals[id].enabled = false;
+  }
+  next.preset = PRESETS.some((p) => p.id === raw.preset) ? raw.preset : null;
+  return next;
+}
+
+;
+// Eight-delay FDN reverb. Unitary Hadamard mixing, input diffusion,
+// early taps, and a short modulated comb when the type is spring.
+// Loop gain is per-line from T60 and hard-capped so the tank cannot run away.
+
+export const MAX_REVERB_LOOP = 0.98;
+
+export const DELAYS_48K = {
+  room: [983, 1109, 1249, 1409, 1597, 1801, 2039, 2297],
+  hall: [1913, 2179, 2467, 2797, 3163, 3571, 4057, 4603],
+  plate: [1399, 1567, 1777, 2017, 2287, 2579, 2917, 3319],
+  spring: [677, 761, 857, 983, 1103, 1237, 1423, 1597],
+};
+
+const AP_48K = [149, 227, 383, 557];
+const AP_GAIN = [0.7, 0.68, -0.62, 0.58];
+
+const EARLY_MS = {
+  room: [[11, 0.28], [17, 0.2], [29, 0.14], [41, 0.09]],
+  hall: [[23, 0.26], [41, 0.18], [67, 0.12], [97, 0.08]],
+  plate: [[13, 0.2], [19, 0.14], [31, 0.09]],
+  spring: [[7, 0.16], [13, 0.1]],
+};
+
+export function loopGainForDelay(delaySamples, sampleRate, t60) {
+  if (!(delaySamples > 0) || !(sampleRate > 0) || !(t60 > 0.01)) return 0;
+  const seconds = delaySamples / sampleRate;
+  const g = Math.pow(10, (-3 * seconds) / t60);
+  if (!Number.isFinite(g) || g < 0) return 0;
+  return Math.min(MAX_REVERB_LOOP, g);
+}
+
+export function fillDelaySamples(type, size, sampleRate, out) {
+  const table = DELAYS_48K[type] || DELAYS_48K.room;
+  const scale = (sampleRate / 48000) * size;
+  for (let i = 0; i < 8; i++) out[i] = table[i] * scale;
+  return out;
+}
+
+function hadamard8(v, out) {
+  const s = 0.3535533905932738;
+  const a = v[0], b = v[1], c = v[2], d = v[3], e = v[4], f = v[5], g = v[6], h = v[7];
+  const a1 = a + b, b1 = a - b, c1 = c + d, d1 = c - d, e1 = e + f, f1 = e - f, g1 = g + h, h1 = g - h;
+  const a2 = a1 + c1, c2 = a1 - c1, b2 = b1 + d1, d2 = b1 - d1, e2 = e1 + g1, g2 = e1 - g1, f2 = f1 + h1, h2 = f1 - h1;
+  out[0] = (a2 + e2) * s;
+  out[4] = (a2 - e2) * s;
+  out[1] = (b2 + f2) * s;
+  out[5] = (b2 - f2) * s;
+  out[2] = (c2 + g2) * s;
+  out[6] = (c2 - g2) * s;
+  out[3] = (d2 + h2) * s;
+  out[7] = (d2 - h2) * s;
+}
+
+class DelayLine {
+  constructor(maxSamples) {
+    this.max = maxSamples;
+    this.buf = new Float32Array(maxSamples);
+    this.w = 0;
+  }
+  clear() {
+    this.buf.fill(0);
+    this.w = 0;
+  }
+  write(x) {
+    if (x > -1e-20 && x < 1e-20) x = 0;
+    this.buf[this.w] = x;
+    this.w++;
+    if (this.w >= this.max) this.w = 0;
+  }
+  // Samples ago. Call before write() on this tick.
+  read(delaySamples) {
+    let d = delaySamples;
+    if (!Number.isFinite(d)) return 0;
+    if (d < 1) d = 1;
+    if (d > this.max - 2) d = this.max - 2;
+    let rp = this.w - d;
+    if (rp < 0) rp += this.max;
+    const i0 = rp | 0;
+    const frac = rp - i0;
+    const i1 = i0 + 1 >= this.max ? 0 : i0 + 1;
+    const a = this.buf[i0];
+    const b = this.buf[i1];
+    return a + (b - a) * frac;
+  }
+}
+
+class Allpass {
+  constructor(maxSamples) {
+    this.dl = new DelayLine(maxSamples);
+  }
+  clear() {
+    this.dl.clear();
+  }
+  process(x, delay, g) {
+    const d = this.dl.read(delay);
+    const y = d - g * x;
+    this.dl.write(x + g * y);
+    return y;
+  }
+}
+
+class Lowpass {
+  constructor() {
+    this.z = 0;
+  }
+  clear() {
+    this.z = 0;
+  }
+  process(x, coeff) {
+    this.z += coeff * (x - this.z);
+    if (this.z > -1e-20 && this.z < 1e-20) this.z = 0;
+    return this.z;
+  }
+}
+
+class DCBlock {
+  constructor() {
+    this.x1 = 0;
+    this.y1 = 0;
+  }
+  clear() {
+    this.x1 = 0;
+    this.y1 = 0;
+  }
+  process(x) {
+    const y = x - this.x1 + 0.995 * this.y1;
+    this.x1 = x;
+    this.y1 = y;
+    return y;
+  }
+}
+
+export class ReverbCore {
+  constructor(sampleRate) {
+    this.sr = sampleRate;
+    const scale = sampleRate / 48000;
+    const lineMax = Math.ceil(5200 * scale * 1.7) + 8;
+    this.lines = [];
+    this.damp = [];
+    for (let i = 0; i < 8; i++) {
+      this.lines.push(new DelayLine(lineMax));
+      this.damp.push(new Lowpass());
+    }
+    const apMax = Math.ceil(900 * scale) + 8;
+    this.ap = AP_48K.map(() => new Allpass(apMax));
+    this.apLen = AP_48K.map((n) => Math.max(2, Math.round(n * scale)));
+    this.early = new DelayLine(Math.ceil(sampleRate * 0.45));
+    this.drip = new DelayLine(Math.ceil(sampleRate * 0.08));
+    this.dripLp = new Lowpass();
+    this.dripBase = Math.max(2, Math.round(0.042 * sampleRate));
+    this.dripMod = Math.max(1, Math.round(0.0035 * sampleRate));
+    this.dcL = new DCBlock();
+    this.dcR = new DCBlock();
+    this.hpZ = 0;
+    this.hpC = 1 - Math.exp((-2 * Math.PI * 42) / sampleRate);
+    this.y = new Float64Array(8);
+    this.mixed = new Float64Array(8);
+    this.targetLen = new Float64Array(8);
+    this.curLen = new Float64Array(8);
+    this.smGain = new Float64Array(8);
+    this.gainTarget = new Float64Array(8);
+    this.taps = [];
+    this.type = "";
+    this.t60 = 1.4;
+    this.cutoff = 4000;
+    this.predelay = 0.02;
+    this.width = 0.9;
+    this.mod = 0.3;
+    this.size = 1;
+    this.preCur = 1;
+    this.smDamp = 0.3;
+    this.smWidth = 0.9;
+    this.lfo = 0;
+    this.lfoInc = 0.5 / sampleRate;
+    this.ready = false;
+    this.gainsReady = false;
+    this.fdnTrim = 3.4;
+    this.inject = 0.5;
+    this.lpCoeff = 1 - Math.exp((-2 * Math.PI * 1600) / sampleRate);
+  }
+
+  clear() {
+    for (let i = 0; i < 8; i++) {
+      this.lines[i].clear();
+      this.damp[i].clear();
+      this.smGain[i] = 0;
+    }
+    for (let i = 0; i < this.ap.length; i++) this.ap[i].clear();
+    this.early.clear();
+    this.drip.clear();
+    this.dripLp.clear();
+    this.dcL.clear();
+    this.dcR.clear();
+    this.hpZ = 0;
+    this.ready = false;
+    this.gainsReady = false;
+  }
+
+  setControls(c) {
+    const type = DELAYS_48K[c.type] ? c.type : "room";
+    const typeChanged = type !== this.type;
+    this.type = type;
+    this.t60 = c.t60 > 0.05 ? c.t60 : 0.05;
+    this.cutoff = c.cutoff > 200 ? c.cutoff : 200;
+    this.predelay = c.predelay > 0 ? c.predelay : 0;
+    this.width = c.width > 0 ? c.width : 0;
+    this.mod = c.mod > 0 ? c.mod : 0;
+    this.size = c.size > 0.4 ? c.size : 0.4;
+    fillDelaySamples(type, this.size, this.sr, this.targetLen);
+    if (typeChanged || !this.ready) {
+      for (let i = 0; i < 8; i++) this.curLen[i] = this.targetLen[i];
+      this.preCur = Math.max(1, this.predelay * this.sr);
+      const spec = EARLY_MS[type];
+      this.taps = spec.map((pair, idx) => ({
+        samples: Math.max(2, Math.round((pair[0] / 1000) * this.sr)),
+        gain: pair[1],
+        right: idx % 2 === 1,
+      }));
+      this.lfoInc = (type === "spring" ? 1.25 : 0.42) / this.sr;
+      if (typeChanged) this.clear();
+      this.ready = true;
+      for (let i = 0; i < 8; i++) this.curLen[i] = this.targetLen[i];
+    }
+  }
+
+  process(input, outL, outR) {
+    const n = input.length;
+    const preTarget = Math.max(0, this.predelay * this.sr);
+    const modAmt = this.mod * (this.type === "spring" ? 22 : 10) * (this.sr / 48000);
+    const dampMix = Math.min(0.82, Math.max(0.04, (11000 - this.cutoff) / 11000));
+    for (let i = 0; i < 8; i++) {
+      this.gainTarget[i] = loopGainForDelay(this.curLen[i], this.sr, this.t60);
+    }
+    if (!this.gainsReady) {
+      for (let i = 0; i < 8; i++) this.smGain[i] = this.gainTarget[i];
+      this.smDamp = dampMix;
+      this.gainsReady = true;
+    }
+    const y = this.y;
+    const mixed = this.mixed;
+    const spring = this.type === "spring";
+    for (let i = 0; i < n; i++) {
+      this.smDamp += (dampMix - this.smDamp) * 0.0015;
+      this.smWidth += (this.width - this.smWidth) * 0.002;
+      this.preCur += (preTarget - this.preCur) * 0.0008;
+      for (let d = 0; d < 8; d++) {
+        this.curLen[d] += (this.targetLen[d] - this.curLen[d]) * 0.00012;
+        this.smGain[d] += (this.gainTarget[d] - this.smGain[d]) * 0.002;
+      }
+      const x0 = input[i] || 0;
+      this.hpZ += this.hpC * (x0 - this.hpZ);
+      const x = x0 - this.hpZ;
+      const pre = this.preCur >= 1.5 ? this.early.read(this.preCur) : x;
+      let earlyL = 0;
+      let earlyR = 0;
+      for (let t = 0; t < this.taps.length; t++) {
+        const tap = this.taps[t];
+        const s = this.early.read(this.preCur + tap.samples) * tap.gain;
+        if (tap.right) earlyR += s;
+        else earlyL += s;
+      }
+      this.early.write(x);
+
+      let diffused = pre;
+      for (let a = 0; a < 4; a++) diffused = this.ap[a].process(diffused, this.apLen[a], AP_GAIN[a]);
+
+      this.lfo += this.lfoInc;
+      if (this.lfo > 1) this.lfo -= 1;
+      const s1 = Math.sin(this.lfo * 6.283185307179586);
+      const s2 = Math.sin(this.lfo * 6.283185307179586 + 2.2);
+
+      for (let d = 0; d < 8; d++) {
+        let len = this.curLen[d];
+        if (d === 0) len += s1 * modAmt;
+        else if (d === 5) len += s2 * modAmt * 0.65;
+        y[d] = this.lines[d].read(len);
+      }
+      hadamard8(y, mixed);
+      const inject = diffused * this.inject;
+      for (let d = 0; d < 8; d++) {
+        const lp = this.damp[d].process(mixed[d], this.lpCoeff);
+        const shaped = mixed[d] + (lp - mixed[d]) * this.smDamp;
+        let fb = shaped * this.smGain[d];
+        if (fb > 1.25 || fb < -1.25) fb = Math.tanh(fb);
+        this.lines[d].write(fb + inject);
+      }
+
+      let l = earlyL;
+      let r = earlyR;
+      for (let d = 0; d < 8; d++) {
+        const s = y[d] * this.fdnTrim;
+        if (d & 1) r += s;
+        else l += s;
+      }
+      if (spring) {
+        const dlen = this.dripBase + s1 * this.dripMod;
+        const dr = this.drip.read(dlen);
+        const band = dr - this.dripLp.process(dr, 0.32);
+        this.drip.write(x * 0.7 + band * 0.46);
+        l += band * 0.38;
+        r += band * 0.3;
+      }
+
+      const mid = 0.5 * (l + r);
+      const side = 0.5 * (l - r) * this.smWidth;
+      let ol = this.dcL.process(mid + side);
+      let orr = this.dcR.process(mid - side);
+      if (ol > 2) ol = 2;
+      else if (ol < -2) ol = -2;
+      if (orr > 2) orr = 2;
+      else if (orr < -2) orr = -2;
+      outL[i] = ol;
+      outR[i] = orr;
+    }
+  }
+}
+
+;
+// Sample-by-sample envelope follower. Used by the AudioWorklet and by tests.
+
+export function createEnvelopeFollower(sampleRate) {
+  let env = 0;
+  return {
+    reset() {
+      env = 0;
+    },
+    get env() {
+      return env;
+    },
+    process(input, output, attackSec, releaseSec, depth, rangeHz) {
+      const n = output.length;
+      const a = 1 - Math.exp(-1 / (sampleRate * Math.max(0.001, attackSec)));
+      const r = 1 - Math.exp(-1 / (sampleRate * Math.max(0.005, releaseSec)));
+      const d = depth > 0 ? depth : 0;
+      const range = rangeHz > 0 ? rangeHz : 0;
+      for (let i = 0; i < n; i++) {
+        const s = Math.abs(input[i] || 0);
+        const c = s > env ? a : r;
+        env += c * (s - env);
+        const shaped = Math.pow(Math.min(1, env * 3.5), 0.8);
+        output[i] = shaped * d * range;
+      }
+    },
+  };
+}
+
+;
+// Web Audio graph. Pedals are stereo so a chorus or reverb keeps its image
+// wherever it sits in the chain. Knobs move with setTargetAtTime.
+
+const SOFT_CURVE = makeSoftCurve();
+const HARD_CURVE = makeHardCurve();
+const CLIP_CURVE = makeSafetyCurve();
+const TREM_CURVE = makeTremCurve();
+
+function stereoGain(ctx) {
+  const g = ctx.createGain();
+  g.channelCount = 2;
+  g.channelCountMode = "explicit";
+  g.channelInterpretation = "speakers";
+  return g;
+}
+
+function approach(ctx, param, value, tc) {
+  const now = ctx.currentTime;
+  const v = Number.isFinite(value) ? value : 0;
+  try {
+    param.setTargetAtTime(v, now, tc || 0.02);
+  } catch (err) {
+    param.value = v;
+  }
+}
+
+function stopBag(bag) {
+  if (!bag) return;
+  for (let i = 0; i < bag.length; i++) {
+    const node = bag[i];
+    try {
+      if (typeof node.stop === "function") node.stop();
+    } catch (err) { /* already stopped */ }
+    try { node.disconnect(); } catch (err) { /* already disconnected */ }
+  }
+  bag.length = 0;
+}
+
+function buildChorus(ctx, head, wetOut, bag, kind) {
+  const base = kind === "vibrato" ? 0.0075 : 0.016;
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  head.connect(splitter);
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  const inv = ctx.createGain();
+  inv.gain.value = kind === "vibrato" ? 1 : -1;
+  lfo.connect(inv);
+  const delays = [];
+  const depths = [];
+  const pans = [];
+  const tones = [];
+  for (let ch = 0; ch < 2; ch++) {
+    const delay = ctx.createDelay(0.05);
+    delay.delayTime.value = base + (kind === "vibrato" ? 0 : ch * 0.0015);
+    const depth = ctx.createGain();
+    (ch === 0 ? lfo : inv).connect(depth);
+    depth.connect(delay.delayTime);
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass";
+    tone.Q.value = 0.7;
+    tone.frequency.value = 4000;
+    const gL = ctx.createGain();
+    const gR = ctx.createGain();
+    splitter.connect(delay, ch);
+    delay.connect(tone);
+    tone.connect(gL);
+    tone.connect(gR);
+    gL.connect(merger, 0, 0);
+    gR.connect(merger, 0, 1);
+    delays.push(delay);
+    depths.push(depth);
+    pans.push([gL, gR]);
+    tones.push(tone);
+    bag.push(delay, depth, tone, gL, gR);
+  }
+  merger.connect(wetOut);
+  lfo.start();
+  bag.push(splitter, merger, lfo, inv);
+  return { kind: "chorus", lfo, delays, depths, pans, tones };
+}
+
+function buildFlanger(ctx, head, wetOut, bag) {
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  head.connect(splitter);
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  const inv = ctx.createGain();
+  inv.gain.value = -1;
+  lfo.connect(inv);
+  const fbs = [];
+  const depths = [];
+  const delays = [];
+  for (let ch = 0; ch < 2; ch++) {
+    const sum = ctx.createGain();
+    const delay = ctx.createDelay(0.02);
+    delay.delayTime.value = 0.0032;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 5200;
+    lp.Q.value = 0.7;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 140;
+    hp.Q.value = 0.7;
+    const fb = ctx.createGain();
+    const depth = ctx.createGain();
+    (ch === 0 ? lfo : inv).connect(depth);
+    depth.connect(delay.delayTime);
+    splitter.connect(sum, ch);
+    fb.connect(sum);
+    sum.connect(delay);
+    delay.connect(lp);
+    lp.connect(hp);
+    hp.connect(fb);
+    hp.connect(merger, 0, ch);
+    fbs.push(fb);
+    depths.push(depth);
+    delays.push(delay);
+    bag.push(sum, delay, lp, hp, fb, depth);
+  }
+  merger.connect(wetOut);
+  lfo.start();
+  bag.push(splitter, merger, lfo, inv);
+  return { kind: "flanger", lfo, fbs, depths, delays };
+}
+
+function buildPhaser(ctx, head, wetOut, bag) {
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  head.connect(splitter);
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  const inv = ctx.createGain();
+  inv.gain.value = -1;
+  lfo.connect(inv);
+  const ratios = [1, 1.16, 1.34, 1.55, 1.78, 2.05];
+  const stages = [[], []];
+  const depthGains = [[], []];
+  const fbs = [];
+  for (let ch = 0; ch < 2; ch++) {
+    const sum = ctx.createGain();
+    splitter.connect(sum, ch);
+    let node = sum;
+    for (let s = 0; s < ratios.length; s++) {
+      const ap = ctx.createBiquadFilter();
+      ap.type = "allpass";
+      ap.Q.value = 0.9;
+      ap.frequency.value = 780 * ratios[s];
+      const dg = ctx.createGain();
+      (ch === 0 ? lfo : inv).connect(dg);
+      dg.connect(ap.frequency);
+      node.connect(ap);
+      node = ap;
+      stages[ch].push(ap);
+      depthGains[ch].push(dg);
+      bag.push(ap, dg);
+    }
+    const fb = ctx.createGain();
+    node.connect(fb);
+    fb.connect(sum);
+    node.connect(merger, 0, ch);
+    fbs.push(fb);
+    bag.push(sum, fb);
+  }
+  merger.connect(wetOut);
+  lfo.start();
+  bag.push(splitter, merger, lfo, inv);
+  return { kind: "phaser", lfo, stages, depthGains, fbs, ratios };
+}
+
+function buildTremolo(ctx, head, wetOut, bag) {
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  head.connect(splitter);
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  const shaper = ctx.createWaveShaper();
+  shaper.curve = TREM_CURVE;
+  const raw = ctx.createGain();
+  const shaped = ctx.createGain();
+  const bus = ctx.createGain();
+  lfo.connect(raw);
+  lfo.connect(shaper);
+  shaper.connect(shaped);
+  raw.connect(bus);
+  shaped.connect(bus);
+  const depthL = ctx.createGain();
+  const depthR = ctx.createGain();
+  bus.connect(depthL);
+  bus.connect(depthR);
+  const gL = ctx.createGain();
+  const gR = ctx.createGain();
+  depthL.connect(gL.gain);
+  depthR.connect(gR.gain);
+  splitter.connect(gL, 0);
+  splitter.connect(gR, 1);
+  gL.connect(merger, 0, 0);
+  gR.connect(merger, 0, 1);
+  merger.connect(wetOut);
+  lfo.start();
+  bag.push(splitter, merger, lfo, shaper, raw, shaped, bus, depthL, depthR, gL, gR);
+  return { kind: "tremolo", lfo, raw, shaped, depthL, depthR, gL, gR };
+}
+
+function buildDrive(ctx, head, wetOut, bag) {
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 75;
+  hp.Q.value = 0.7;
+  const pre = ctx.createGain();
+  head.connect(hp);
+  hp.connect(pre);
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  pre.connect(splitter);
+  const softG = [];
+  const hardG = [];
+  const tones = [];
+  for (let ch = 0; ch < 2; ch++) {
+    const soft = ctx.createWaveShaper();
+    soft.curve = SOFT_CURVE;
+    soft.oversample = "2x";
+    const hard = ctx.createWaveShaper();
+    hard.curve = HARD_CURVE;
+    hard.oversample = "2x";
+    const gs = ctx.createGain();
+    const gh = ctx.createGain();
+    const sum = ctx.createGain();
+    const tone = ctx.createBiquadFilter();
+    tone.type = "lowpass";
+    tone.Q.value = 0.7;
+    splitter.connect(soft, ch);
+    splitter.connect(hard, ch);
+    soft.connect(gs);
+    hard.connect(gh);
+    gs.connect(sum);
+    gh.connect(sum);
+    sum.connect(tone);
+    tone.connect(merger, 0, ch);
+    softG.push(gs);
+    hardG.push(gh);
+    tones.push(tone);
+    bag.push(soft, hard, gs, gh, sum, tone);
+  }
+  const post = ctx.createGain();
+  merger.connect(post);
+  post.connect(wetOut);
+  bag.push(hp, pre, splitter, merger, post);
+  return { pre, softG, hardG, tones, post };
+}
+
+function buildFilter(ctx, head, wetOut, bag) {
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  const sense = ctx.createGain();
+  head.connect(splitter);
+  head.connect(sense);
+  const filters = [];
+  for (let ch = 0; ch < 2; ch++) {
+    const f = ctx.createBiquadFilter();
+    f.type = "lowpass";
+    f.frequency.value = 1200;
+    f.Q.value = 0.7;
+    splitter.connect(f, ch);
+    f.connect(merger, 0, ch);
+    filters.push(f);
+    bag.push(f);
+  }
+  merger.connect(wetOut);
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  const lfoDepth = ctx.createGain();
+  lfoDepth.gain.value = 0;
+  lfo.connect(lfoDepth);
+  lfoDepth.connect(filters[0].frequency);
+  lfoDepth.connect(filters[1].frequency);
+  lfo.start();
+  bag.push(splitter, merger, sense, lfo, lfoDepth);
+  return { filters, lfo, lfoDepth, sense };
+}
+
+function buildDelay(ctx, head, wetOut, bag) {
+  const splitter = ctx.createChannelSplitter(2);
+  const merger = ctx.createChannelMerger(2);
+  head.connect(splitter);
+  const lfo = ctx.createOscillator();
+  lfo.type = "sine";
+  const inv = ctx.createGain();
+  inv.gain.value = -1;
+  lfo.connect(inv);
+  const delays = [];
+  const fbs = [];
+  const tones = [];
+  const lows = [];
+  const depths = [];
+  for (let ch = 0; ch < 2; ch++) {
+    const sum = ctx.createGain();
+    const delay = ctx.createDelay(1.25);
+    delay.delayTime.value = 0.32;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.Q.value = 0.707;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.Q.value = 0.707;
+    const fb = ctx.createGain();
+    const depth = ctx.createGain();
+    (ch === 0 ? lfo : inv).connect(depth);
+    depth.connect(delay.delayTime);
+    splitter.connect(sum, ch);
+    fb.connect(sum);
+    sum.connect(delay);
+    delay.connect(lp);
+    lp.connect(hp);
+    hp.connect(fb);
+    hp.connect(merger, 0, ch);
+    delays.push(delay);
+    fbs.push(fb);
+    tones.push(lp);
+    lows.push(hp);
+    depths.push(depth);
+    bag.push(sum, delay, lp, hp, fb, depth);
+  }
+  merger.connect(wetOut);
+  lfo.start();
+  bag.push(splitter, merger, lfo, inv);
+  return { lfo, delays, fbs, tones, lows, depths };
+}
+
+function makeShell(ctx, blend) {
+  const input = stereoGain(ctx);
+  const output = stereoGain(ctx);
+  const dry = stereoGain(ctx);
+  const wet = stereoGain(ctx);
+  const head = stereoGain(ctx);
+  const wetOut = stereoGain(ctx);
+  input.connect(dry);
+  dry.connect(output);
+  input.connect(head);
+  wetOut.connect(wet);
+  wet.connect(output);
+  dry.gain.value = 1;
+  wet.gain.value = 0;
+  return { input, output, dry, wet, head, wetOut, blend, bag: [], modBag: [] };
+}
+
+class Engine {
+  constructor() {
+    this.ctx = null;
+    this.running = false;
+    this.meter = 0;
+    this.peakMeter = 0;
+    this.displayPeak = 0;
+    this.reverbMode = "none";
+    this.order = [];
+    this.attempts = [];
+    this.constraints = null;
+    this.onMeter = null;
+    this.onDevices = null;
+    this.modType = "";
+    this.reverbType = "";
+    this.filterType = "";
+    this.liveFilter = null;
+    this.typeTimers = {};
+    this.noteTimers = [];
+    this.testLive = false;
+    this.shells = {};
+  }
+
+  async start(state) {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      this.ctx = new AC({ latencyHint: "interactive" });
+      await this.ctx.resume();
+      await this.loadWorklet();
+      this.build();
+      this.sync(state, false);
+      this.order = state.order.slice();
+      this.reconnectNow();
+    } else {
+      await this.ctx.resume();
+      this.sync(state, false);
+    }
+    this.running = true;
+    this.peakMeter = 0;
+    this.displayPeak = 0;
+    try {
+      await this.applySource(state.source, state.deviceId);
+      this.inputError = null;
+    } catch (err) {
+      this.inputError = err;
+      this.tick();
+      throw err;
+    }
+    this.tick();
+  }
+
+  async stop() {
+    this.running = false;
+    this.stopTest();
+    this.stopMic();
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.ctx && this.ctx.state === "running") await this.ctx.suspend();
+  }
+
+  async loadWorklet() {
+    this.workletOk = false;
+    try {
+      const url = typeof WORKLET_URL === "string" ? WORKLET_URL : "/worklet.js";
+      await this.ctx.audioWorklet.addModule(url);
+      this.workletOk = true;
+    } catch (err) {
+      this.workletOk = false;
+    }
+  }
+
+  build() {
+    const ctx = this.ctx;
+    this.inputGain = stereoGain(ctx);
+    this.micGain = ctx.createGain();
+    this.testGain = ctx.createGain();
+    this.micGain.gain.value = 0;
+    this.testGain.gain.value = 0;
+    this.micGain.connect(this.inputGain);
+    this.testGain.connect(this.inputGain);
+    this.analyser = ctx.createAnalyser();
+    this.analyser.fftSize = 1024;
+    this.analyser.smoothingTimeConstant = 0.45;
+    this.buf = new Float32Array(this.analyser.fftSize);
+    this.inputGain.connect(this.analyser);
+    this.chainIn = stereoGain(ctx);
+    this.inputGain.connect(this.chainIn);
+    this.duck = stereoGain(ctx);
+    this.master = stereoGain(ctx);
+    this.master.gain.value = 0.8;
+    this.duck.connect(this.master);
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -2.5;
+    comp.knee.value = 3;
+    comp.ratio.value = 18;
+    comp.attack.value = 0.003;
+    comp.release.value = 0.1;
+    const clip = ctx.createWaveShaper();
+    clip.curve = CLIP_CURVE;
+    clip.oversample = "2x";
+    this.master.connect(comp);
+    comp.connect(clip);
+    clip.connect(ctx.destination);
+
+    this.shells.drive = makeShell(ctx, "replace");
+    this.shells.drive.fx = buildDrive(ctx, this.shells.drive.head, this.shells.drive.wetOut, this.shells.drive.bag);
+
+    this.shells.mod = makeShell(ctx, "replace");
+    this.rebuildMod("chorus");
+
+    this.shells.filter = makeShell(ctx, "replace");
+    this.shells.filter.fx = buildFilter(ctx, this.shells.filter.head, this.shells.filter.wetOut, this.shells.filter.bag);
+
+    this.shells.delay = makeShell(ctx, "add");
+    this.shells.delay.fx = buildDelay(ctx, this.shells.delay.head, this.shells.delay.wetOut, this.shells.delay.bag);
+
+    this.shells.reverb = makeShell(ctx, "add");
+    this.buildReverb();
+
+    if (this.workletOk && this.envNode) {
+      try {
+        this.shells.filter.fx.sense.connect(this.envNode);
+        this.envNode.connect(this.shells.filter.fx.filters[0].frequency);
+        this.envNode.connect(this.shells.filter.fx.filters[1].frequency);
+      } catch (err) {
+        this.envNode = null;
+      }
+    }
+    this.follower = createEnvelopeFollower(ctx.sampleRate);
+    this.envOut = new Float32Array(this.buf.length);
+  }
+
+  buildReverb() {
+    const ctx = this.ctx;
+    const shell = this.shells.reverb;
+    if (this.workletOk) {
+      try {
+        const node = new AudioWorkletNode(ctx, "reverb-fdn", {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          outputChannelCount: [2],
+        });
+        shell.head.connect(node);
+        node.connect(shell.wetOut);
+        shell.bag.push(node);
+        shell.fx = { mode: "worklet", node };
+        this.envNode = new AudioWorkletNode(ctx, "envelope-follow");
+        this.reverbMode = "worklet";
+        return;
+      } catch (err) {
+        this.workletOk = false;
+      }
+    }
+    const a = ctx.createConvolver();
+    const b = ctx.createConvolver();
+    const gA = ctx.createGain();
+    const gB = ctx.createGain();
+    gA.gain.value = 1;
+    gB.gain.value = 0;
+    shell.head.connect(a);
+    shell.head.connect(b);
+    a.connect(gA);
+    b.connect(gB);
+    gA.connect(shell.wetOut);
+    gB.connect(shell.wetOut);
+    shell.bag.push(a, b, gA, gB);
+    shell.fx = { mode: "convolver", a, b, gA, gB, active: 0 };
+    this.reverbMode = "convolver";
+    this.envNode = null;
+  }
+
+  rebuildMod(type) {
+    const shell = this.shells.mod;
+    stopBag(shell.modBag);
+    shell.modBag = [];
+    try { shell.head.disconnect(); } catch (err) { /* first build */ }
+    const kind = type === "vibrato" ? "vibrato" : type;
+    let fx;
+    if (kind === "phaser") fx = buildPhaser(this.ctx, shell.head, shell.wetOut, shell.modBag);
+    else if (kind === "flanger") fx = buildFlanger(this.ctx, shell.head, shell.wetOut, shell.modBag);
+    else if (kind === "tremolo") fx = buildTremolo(this.ctx, shell.head, shell.wetOut, shell.modBag);
+    else fx = buildChorus(this.ctx, shell.head, shell.wetOut, shell.modBag, kind === "vibrato" ? "vibrato" : "chorus");
+    shell.fx = fx;
+    this.modType = type;
+  }
+
+  sync(state, duckTypes) {
+    this.setInputGain(state.inputGain);
+    this.setMaster(state.master);
+    for (let i = 0; i < PEDAL_IDS.length; i++) {
+      const id = PEDAL_IDS[i];
+      this.setPedal(id, state.pedals[id], duckTypes);
+    }
+    if (this.order.join() !== state.order.join()) this.setOrder(state.order);
+  }
+
+  setPedal(id, pedal, duck) {
+    if (!this.ctx) return;
+    const typeChanged = (id === "mod" && pedal.type !== this.modType)
+      || (id === "reverb" && pedal.type !== this.reverbType && this.reverbType !== "")
+      || (id === "filter" && pedal.type !== this.filterType && this.filterType !== "");
+    const run = () => {
+      if (id === "mod" && pedal.type !== this.modType) this.rebuildMod(pedal.type);
+      if (id === "reverb") this.reverbType = pedal.type;
+      if (id === "filter") this.filterType = pedal.type;
+      this.apply(id, pedal);
+    };
+    if (duck && typeChanged) {
+      this.applyBlend(this.shells[id], false, 0);
+      clearTimeout(this.typeTimers[id]);
+      this.typeTimers[id] = setTimeout(run, 28);
+    } else {
+      run();
+    }
+  }
+
+  apply(id, pedal) {
+    if (id === "drive") this.applyDrive(pedal);
+    else if (id === "mod") this.applyMod(pedal);
+    else if (id === "filter") this.applyFilter(pedal);
+    else if (id === "delay") this.applyDelay(pedal);
+    else if (id === "reverb") this.applyReverb(pedal);
+  }
+
+  applyBlend(shell, enabled, mix) {
+    const g = blendGains(shell.blend, enabled, mix);
+    approach(this.ctx, shell.dry.gain, g.dry, 0.012);
+    approach(this.ctx, shell.wet.gain, g.wet, 0.012);
+  }
+
+  applyDrive(pedal) {
+    const p = pedal.params;
+    const fx = this.shells.drive.fx;
+    const pre = mapParam("drive", "gain", p.gain);
+    const fuzz = mapParam("drive", "fuzz", p.fuzz);
+    approach(this.ctx, fx.pre.gain, pre, 0.02);
+    for (let i = 0; i < 2; i++) {
+      approach(this.ctx, fx.softG[i].gain, 1 - fuzz, 0.02);
+      approach(this.ctx, fx.hardG[i].gain, fuzz, 0.02);
+      approach(this.ctx, fx.tones[i].frequency, mapParam("drive", "tone", p.tone), 0.03);
+    }
+    const level = mapParam("drive", "level", p.level) * driveMakeup(pre, fuzz);
+    approach(this.ctx, fx.post.gain, level, 0.02);
+    this.applyBlend(this.shells.drive, pedal.enabled, p.mix);
+  }
+
+  applyMod(pedal) {
+    const p = pedal.params;
+    const type = pedal.type;
+    const fx = this.shells.mod.fx;
+    const rate = mapParam("mod", "rate", p.rate, type);
+    const depth = mapParam("mod", "depth", p.depth, type);
+    const color = mapParam("mod", "color", p.color, type);
+    const width = mapParam("mod", "width", p.width, type);
+    approach(this.ctx, fx.lfo.frequency, rate, 0.03);
+    if (fx.kind === "chorus") {
+      for (let i = 0; i < fx.depths.length; i++) approach(this.ctx, fx.depths[i].gain, depth, 0.03);
+      for (let i = 0; i < fx.tones.length; i++) approach(this.ctx, fx.tones[i].frequency, color, 0.04);
+      const w = clamp01(width);
+      approach(this.ctx, fx.pans[0][0].gain, 0.5 + 0.5 * w, 0.03);
+      approach(this.ctx, fx.pans[0][1].gain, 0.5 - 0.5 * w, 0.03);
+      approach(this.ctx, fx.pans[1][0].gain, 0.5 - 0.5 * w, 0.03);
+      approach(this.ctx, fx.pans[1][1].gain, 0.5 + 0.5 * w, 0.03);
+    } else if (fx.kind === "flanger") {
+      for (let i = 0; i < fx.depths.length; i++) approach(this.ctx, fx.depths[i].gain, depth, 0.03);
+      for (let i = 0; i < fx.fbs.length; i++) approach(this.ctx, fx.fbs[i].gain, Math.min(MAX_FLANGER_FEEDBACK, color), 0.03);
+    } else if (fx.kind === "phaser") {
+      for (let ch = 0; ch < 2; ch++) {
+        for (let s = 0; s < fx.depthGains[ch].length; s++) {
+          approach(this.ctx, fx.depthGains[ch][s].gain, depth, 0.04);
+        }
+        approach(this.ctx, fx.fbs[ch].gain, Math.min(MAX_PHASER_FEEDBACK, color), 0.03);
+      }
+    } else if (fx.kind === "tremolo") {
+      const m = depth * 0.5;
+      const shape = clamp01(color);
+      const w = clamp01(width);
+      approach(this.ctx, fx.raw.gain, 1 - shape, 0.03);
+      approach(this.ctx, fx.shaped.gain, shape, 0.03);
+      approach(this.ctx, fx.depthL.gain, m, 0.03);
+      approach(this.ctx, fx.depthR.gain, m * (1 - 2 * w), 0.03);
+      approach(this.ctx, fx.gL.gain, 1 - m, 0.03);
+      approach(this.ctx, fx.gR.gain, 1 - m, 0.03);
+    }
+    this.applyBlend(this.shells.mod, pedal.enabled, p.mix);
+  }
+
+  applyFilter(pedal) {
+    const p = pedal.params;
+    const type = pedal.type;
+    const fx = this.shells.filter.fx;
+    this.liveFilter = pedal;
+    const base = mapParam("filter", "freq", p.freq, type);
+    const q = mapParam("filter", "resonance", p.resonance, type);
+    const biquadType = type === "highpass" ? "highpass" : type === "wah" ? "bandpass" : "lowpass";
+    for (let i = 0; i < fx.filters.length; i++) {
+      if (fx.filters[i].type !== biquadType) fx.filters[i].type = biquadType;
+      approach(this.ctx, fx.filters[i].frequency, base, 0.03);
+      approach(this.ctx, fx.filters[i].Q, q, 0.03);
+    }
+    if (type === "wah") {
+      approach(this.ctx, fx.lfo.frequency, 0.2, 0.05);
+      approach(this.ctx, fx.lfoDepth.gain, 0, 0.03);
+      this.pushEnvelope(p, true);
+    } else {
+      const rate = mapParam("filter", "rate", p.rate, type);
+      const swing = mapParam("filter", "depth", p.depth, type) * base * 0.75;
+      approach(this.ctx, fx.lfo.frequency, rate, 0.03);
+      approach(this.ctx, fx.lfoDepth.gain, swing, 0.04);
+      this.pushEnvelope(p, false);
+    }
+    this.applyBlend(this.shells.filter, pedal.enabled, p.mix == null ? 1 : p.mix);
+  }
+
+  pushEnvelope(params, wah) {
+    const depth = wah ? mapParam("filter", "depth", params.depth, "wah") : 0;
+    const range = wah ? mapParam("filter", "range", params.freq, "wah") : 0;
+    const attack = mapParam("filter", "rate", params.rate, "wah");
+    const release = mapParam("filter", "release", params.release == null ? 0.4 : params.release, "wah");
+    if (this.envNode) {
+      const now = this.ctx.currentTime;
+      approach(this.ctx, this.envNode.parameters.get("depth"), depth, 0.03);
+      approach(this.ctx, this.envNode.parameters.get("range"), range, 0.03);
+      approach(this.ctx, this.envNode.parameters.get("attack"), attack, 0.03);
+      approach(this.ctx, this.envNode.parameters.get("release"), release, 0.03);
+      this._envAttack = attack;
+      this._envRelease = release;
+      this._envDepth = depth;
+      this._envRange = range;
+    } else {
+      this._envAttack = attack;
+      this._envRelease = release;
+      this._envDepth = depth;
+      this._envRange = range;
+    }
+  }
+
+  applyDelay(pedal) {
+    const p = pedal.params;
+    const fx = this.shells.delay.fx;
+    const time = clamp(mapParam("delay", "time", p.time), 0.04, 1);
+    const fb = Math.min(MAX_DELAY_FEEDBACK, mapParam("delay", "feedback", p.feedback));
+    const tone = mapParam("delay", "tone", p.tone);
+    const low = mapParam("delay", "lowCut", p.lowCut);
+    const mod = mapParam("delay", "modDepth", p.modDepth);
+    const rate = mapParam("delay", "modRate", p.modRate);
+    approach(this.ctx, fx.lfo.frequency, rate, 0.05);
+    for (let i = 0; i < 2; i++) {
+      approach(this.ctx, fx.delays[i].delayTime, time, 0.04);
+      approach(this.ctx, fx.fbs[i].gain, fb, 0.03);
+      approach(this.ctx, fx.tones[i].frequency, tone, 0.04);
+      approach(this.ctx, fx.lows[i].frequency, low, 0.04);
+      approach(this.ctx, fx.depths[i].gain, mod, 0.04);
+    }
+    this.applyBlend(this.shells.delay, pedal.enabled, p.mix);
+  }
+
+  applyReverb(pedal) {
+    const p = pedal.params;
+    const type = pedal.type;
+    this.reverbType = type;
+    const t60 = mapParam("reverb", "decay", p.decay);
+    const cutoff = mapParam("reverb", "tone", p.tone);
+    const pre = mapParam("reverb", "predelay", p.predelay);
+    const width = mapParam("reverb", "width", p.width);
+    const mod = mapParam("reverb", "mod", p.mod);
+    const size = mapParam("reverb", "size", p.size);
+    const fx = this.shells.reverb.fx;
+    if (fx.mode === "worklet") {
+      const par = fx.node.parameters;
+      const now = this.ctx.currentTime;
+      const typeParam = par.get("type");
+      typeParam.cancelScheduledValues(now);
+      typeParam.setValueAtTime(reverbTypeIndex(type), now);
+      approach(this.ctx, par.get("t60"), t60, 0.04);
+      approach(this.ctx, par.get("cutoff"), cutoff, 0.04);
+      approach(this.ctx, par.get("predelay"), pre, 0.04);
+      approach(this.ctx, par.get("width"), width, 0.04);
+      approach(this.ctx, par.get("mod"), mod, 0.04);
+      approach(this.ctx, par.get("size"), size, 0.08);
+    } else {
+      this.irParams = { t60, cutoff, predelay: pre, width, mod, size, type };
+      clearTimeout(this.irTimer);
+      this.irTimer = setTimeout(() => this.swapImpulse(), 70);
+    }
+    this.applyBlend(this.shells.reverb, pedal.enabled, p.mix);
+  }
+
+  swapImpulse() {
+    if (!this.irParams || !this.shells.reverb || this.shells.reverb.fx.mode !== "convolver") return;
+    const ctx = this.ctx;
+    const sr = ctx.sampleRate;
+    const seconds = Math.min(4.5, Math.max(1.2, this.irParams.t60 * 1.15));
+    const n = Math.floor(sr * seconds);
+    const rev = new ReverbCore(sr);
+    rev.setControls(this.irParams);
+    const L = new Float32Array(n);
+    const R = new Float32Array(n);
+    const block = 128;
+    const inp = new Float32Array(block);
+    inp[0] = 1;
+    for (let i = 0; i < n; i += block) {
+      const len = Math.min(block, n - i);
+      rev.process(inp.subarray(0, len), L.subarray(i, i + len), R.subarray(i, i + len));
+      if (i === 0) inp[0] = 0;
+    }
+    let peak = 0;
+    for (let i = 0; i < n; i++) {
+      const a = Math.abs(L[i]);
+      const b = Math.abs(R[i]);
+      if (a > peak) peak = a;
+      if (b > peak) peak = b;
+    }
+    const norm = peak > 0.0001 ? 0.85 / peak : 1;
+    for (let i = 0; i < n; i++) {
+      L[i] *= norm;
+      R[i] *= norm;
+    }
+    const buffer = ctx.createBuffer(2, n, sr);
+    buffer.copyToChannel(L, 0);
+    buffer.copyToChannel(R, 1);
+    const fx = this.shells.reverb.fx;
+    const next = fx.active ? 0 : 1;
+    const conv = next ? fx.b : fx.a;
+    const gain = next ? fx.gB : fx.gA;
+    const prev = next ? fx.gA : fx.gB;
+    conv.buffer = buffer;
+    approach(ctx, gain.gain, 1, 0.03);
+    approach(ctx, prev.gain, 0, 0.05);
+    fx.active = next;
+  }
+
+  setInputGain(value) {
+    if (!this.ctx) return;
+    approach(this.ctx, this.inputGain.gain, clamp(value, 0, INPUT_GAIN_MAX), 0.02);
+  }
+
+  setMaster(value) {
+    if (!this.ctx) return;
+    approach(this.ctx, this.master.gain, clamp01(value), 0.02);
+  }
+
+  setOrder(order) {
+    this.order = order.slice();
+    if (!this.ctx || !this.duck) return;
+    if (!this.running) {
+      this.reconnectNow();
+      return;
+    }
+    approach(this.ctx, this.duck.gain, 0, 0.005);
+    clearTimeout(this.reTimer);
+    this.reTimer = setTimeout(() => {
+      this.reconnectNow();
+      if (this.ctx) approach(this.ctx, this.duck.gain, 1, 0.012);
+    }, 22);
+  }
+
+  reconnectNow() {
+    try { this.chainIn.disconnect(); } catch (err) { /* fresh */ }
+    for (let i = 0; i < PEDAL_IDS.length; i++) {
+      try { this.shells[PEDAL_IDS[i]].output.disconnect(); } catch (err) { /* fresh */ }
+    }
+    let prev = this.chainIn;
+    for (let i = 0; i < this.order.length; i++) {
+      const shell = this.shells[this.order[i]];
+      prev.connect(shell.input);
+      prev = shell.output;
+    }
+    prev.connect(this.duck);
+  }
+
+  async applySource(source, deviceId) {
+    if (source === "test") {
+      this.stopMic();
+      approach(this.ctx, this.micGain.gain, 0, 0.015);
+      approach(this.ctx, this.testGain.gain, 0.9, 0.02);
+      this.startTest();
+      return;
+    }
+    this.stopTest();
+    approach(this.ctx, this.testGain.gain, 0, 0.015);
+    await this.openMic(deviceId);
+    approach(this.ctx, this.micGain.gain, 1, 0.02);
+  }
+
+  async openMic(deviceId) {
+    const stream = await this.requestMic(deviceId);
+    if (this.micNode) {
+      try { this.micNode.disconnect(); } catch (err) { /* already */ }
+    }
+    if (this.micStream) this.micStream.getTracks().forEach((t) => t.stop());
+    this.micStream = stream;
+    this.micNode = this.ctx.createMediaStreamSource(stream);
+    this.micNode.connect(this.micGain);
+    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices && this.onDevices) {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        this.onDevices(all.filter((d) => d.kind === "audioinput"));
+      } catch (err) { /* labels can wait */ }
+    }
+  }
+
+  async requestMic(deviceId) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error("This browser has no microphone input.");
+    }
+    const attempts = [];
+    const first = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      channelCount: 1,
+      latency: 0,
+    };
+    if (deviceId) first.deviceId = { exact: deviceId };
+    attempts.push(first);
+    const second = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    };
+    if (deviceId) second.deviceId = { exact: deviceId };
+    attempts.push(second);
+    if (deviceId) {
+      attempts.push({
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      });
+    }
+    this.attempts = attempts;
+    let lastErr = null;
+    for (let i = 0; i < attempts.length; i++) {
+      this.constraints = attempts[i];
+      try {
+        return await navigator.mediaDevices.getUserMedia({ audio: attempts[i], video: false });
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("Microphone permission was blocked.");
+  }
+
+  stopMic() {
+    if (this.micNode) {
+      try { this.micNode.disconnect(); } catch (err) { /* already */ }
+      this.micNode = null;
+    }
+    if (this.micStream) {
+      this.micStream.getTracks().forEach((t) => t.stop());
+      this.micStream = null;
+    }
+  }
+
+  startTest() {
+    if (this.testLive) return;
+    this.testLive = true;
+    this.nextBeat = this.ctx.currentTime + 0.06;
+    this.step = 0;
+    const loop = () => {
+      if (!this.testLive || !this.ctx) return;
+      const spb = 60 / 78;
+      while (this.nextBeat < this.ctx.currentTime + 0.14) {
+        this.fireBeat(this.nextBeat, this.step % 4);
+        this.nextBeat += spb;
+        this.step++;
+      }
+      this.testTimer = setTimeout(loop, 25);
+    };
+    loop();
+  }
+
+  stopTest() {
+    this.testLive = false;
+    clearTimeout(this.testTimer);
+    this.testTimer = null;
+  }
+
+  fireBeat(time, beat) {
+    if (beat === 0) this.strum(time, [82.41, 123.47, 164.81, 207.65, 246.94, 329.63], 0.12);
+    else if (beat === 2) this.strum(time, [164.81, 246.94, 329.63], 0.07);
+    else this.snare(time);
+  }
+
+  strum(time, freqs, vel) {
+    for (let i = 0; i < freqs.length; i++) this.pluck(time + i * 0.015, freqs[i], vel * (i < 2 ? 1 : 0.72));
+  }
+
+  pluck(time, freq, velocity) {
+    const ctx = this.ctx;
+    const sr = ctx.sampleRate;
+    const period = sr / freq;
+    const len = Math.max(8, Math.floor(period));
+    const buffer = ctx.createBuffer(1, len, sr);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const delay = ctx.createDelay(1);
+    delay.delayTime.setValueAtTime(Math.min(0.9, period / sr), time);
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(1700 + velocity * 3000, time);
+    const fb = ctx.createGain();
+    fb.gain.setValueAtTime(freq < 140 ? 0.962 : 0.944, time);
+    const out = ctx.createGain();
+    out.gain.setValueAtTime(Math.max(0.0002, velocity), time);
+    out.gain.exponentialRampToValueAtTime(0.0001, time + 2.15);
+    src.connect(delay);
+    delay.connect(filter);
+    filter.connect(fb);
+    fb.connect(delay);
+    filter.connect(out);
+    out.connect(this.testGain);
+    src.start(time);
+    src.stop(time + 0.04);
+    this.collect(time + 2.35, [src, delay, filter, fb, out]);
+  }
+
+  snare(time) {
+    const ctx = this.ctx;
+    const dur = 0.15;
+    const n = Math.max(8, Math.floor(ctx.sampleRate * dur));
+    const buffer = ctx.createBuffer(1, n, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.setValueAtTime(1850, time);
+    bp.Q.setValueAtTime(0.75, time);
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.setValueAtTime(900, time);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.38, time);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + dur);
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(175, time);
+    osc.frequency.exponentialRampToValueAtTime(80, time + 0.08);
+    const og = ctx.createGain();
+    og.gain.setValueAtTime(0.22, time);
+    og.gain.exponentialRampToValueAtTime(0.0001, time + 0.09);
+    src.connect(bp);
+    bp.connect(hp);
+    hp.connect(g);
+    g.connect(this.testGain);
+    osc.connect(og);
+    og.connect(this.testGain);
+    src.start(time);
+    src.stop(time + dur);
+    osc.start(time);
+    osc.stop(time + 0.1);
+    this.collect(time + 0.4, [src, bp, hp, g, osc, og]);
+  }
+
+  collect(when, nodes) {
+    const ms = Math.max(40, (when - this.ctx.currentTime) * 1000 + 60);
+    const timer = setTimeout(() => {
+      for (let i = 0; i < nodes.length; i++) {
+        try { nodes[i].disconnect(); } catch (err) { /* gone */ }
+      }
+    }, ms);
+    this.noteTimers.push(timer);
+    if (this.noteTimers.length > 48) clearTimeout(this.noteTimers.shift());
+  }
+
+  tick() {
+    if (!this.running || !this.analyser) return;
+    this.analyser.getFloatTimeDomainData(this.buf);
+    let s = 0;
+    let peak = 0;
+    const buf = this.buf;
+    for (let i = 0; i < buf.length; i++) {
+      const a = buf[i] < 0 ? -buf[i] : buf[i];
+      if (a > peak) peak = a;
+      s += buf[i] * buf[i];
+    }
+    const rms = Math.sqrt(s / buf.length);
+    this.meter += (rms - this.meter) * 0.45;
+    if (this.meter > this.peakMeter) this.peakMeter = this.meter;
+    if (peak > this.displayPeak) this.displayPeak = peak;
+    else this.displayPeak *= 0.993;
+    if (!this.envNode && this.liveFilter && this.liveFilter.type === "wah" && this.liveFilter.enabled && this._envDepth > 0) {
+      this.follower.process(buf, this.envOut, this._envAttack || 0.02, this._envRelease || 0.15, this._envDepth, this._envRange || 0);
+      const add = this.envOut[this.envOut.length - 1] || 0;
+      const base = mapParam("filter", "freq", this.liveFilter.params.freq, "wah");
+      const fx = this.shells.filter.fx;
+      approach(this.ctx, fx.filters[0].frequency, base + add, 0.02);
+      approach(this.ctx, fx.filters[1].frequency, base + add, 0.02);
+    }
+    if (this.onMeter) this.onMeter(this.displayPeak || rms);
+    this.raf = requestAnimationFrame(() => this.tick());
+  }
+}
+
+const engine = new Engine();
+
+;
+// Pedalboard UI. Audio stays in engine.js; this file only holds state and DOM.
+
+let state = loadState();
+let saveTimer = 0;
+let taps = [];
+let drag = null;
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(storageKeyFor(APP_CONFIG.name));
+    if (!raw) return initialState();
+    return hydrate(JSON.parse(raw));
+  } catch (err) {
+    return initialState();
+  }
+}
+
+function saveNow() {
+  clearTimeout(saveTimer);
+  try {
+    localStorage.setItem(storageKeyFor(APP_CONFIG.name), JSON.stringify(serialize(state)));
+  } catch (err) { /* private mode */ }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveNow, 40);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+function setStatus(text) {
+  document.getElementById("status").textContent = text || "";
+}
+
+function readKnob(pedal, param) {
+  if (pedal === "global") return param === "input" ? state.inputGain / INPUT_GAIN_MAX : state.master;
+  return state.pedals[pedal].params[param];
+}
+
+function knobText(pedal, param, knob) {
+  if (pedal === "global") return param === "input" ? formatGainDb(state.inputGain) : Math.round(state.master * 100) + "%";
+  return formatParam(pedal, param, knob, state.pedals[pedal].type);
+}
+
+function knobLabel(pedal, param) {
+  if (pedal === "global") return param === "input" ? "Input" : "Master";
+  return paramLabel(pedal, param, state.pedals[pedal].type);
+}
+
+function paintFromState() {
+  const knobs = document.querySelectorAll(".knob");
+  for (let i = 0; i < knobs.length; i++) {
+    const el = knobs[i];
+    const pedal = el.dataset.pedal;
+    const param = el.dataset.param;
+    const knob = readKnob(pedal, param);
+    const text = knobText(pedal, param, knob);
+    const label = knobLabel(pedal, param);
+    el.style.setProperty("--p", String(clamp01(knob)));
+    const valueEl = el.querySelector(".knob-value");
+    const labelEl = el.querySelector(".knob-label");
+    if (valueEl) valueEl.textContent = text;
+    if (labelEl) labelEl.textContent = label;
+    el.setAttribute("aria-valuenow", String(Math.round(clamp01(knob) * 100)));
+    el.setAttribute("aria-valuetext", text);
+    el.setAttribute("aria-label", label);
+  }
+}
+
+let meterHold = 0;
+
+function paintMeter(rms) {
+  const pct = Math.round(meterPercent(rms) * 100);
+  meterHold = Math.max(pct, meterHold * 0.97);
+  const shown = Math.round(meterHold);
+  const fill = document.getElementById("meterFill");
+  fill.style.width = shown + "%";
+  fill.dataset.hot = shown > 92 ? "hot" : shown > 75 ? "warm" : "";
+  document.getElementById("meter").setAttribute("aria-valuenow", String(shown));
+}
+
+function highlightPreset() {
+  const buttons = document.querySelectorAll("[data-preset]");
+  for (let i = 0; i < buttons.length; i++) {
+    const on = buttons[i].dataset.preset === state.preset;
+    buttons[i].setAttribute("aria-pressed", String(on));
+    buttons[i].classList.toggle("on", on);
+  }
+}
+
+function paintSource() {
+  const buttons = document.querySelectorAll("[data-source]");
+  for (let i = 0; i < buttons.length; i++) {
+    const on = buttons[i].dataset.source === state.source;
+    buttons[i].setAttribute("aria-pressed", String(on));
+    buttons[i].classList.toggle("on", on);
+  }
+  document.getElementById("device").disabled = state.source !== "guitar";
+}
+
+function chainLabel() {
+  document.getElementById("chainLabel").textContent = chainText(state);
+}
+
+function nudgeGlyphs() {
+  const board = document.getElementById("board");
+  if (!board) return;
+  board.classList.toggle("horizontal", window.matchMedia("(min-width: 900px)").matches);
+}
+
+function knobMarkup(pedal, param, extra) {
+  const knob = clamp01(readKnob(pedal, param));
+  const label = knobLabel(pedal, param);
+  const text = knobText(pedal, param, knob);
+  return '<div class="knob" data-pedal="' + pedal + '" data-param="' + param + '" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(knob * 100) + '" aria-valuetext="' + esc(text) + '" aria-label="' + esc(label) + '" style="--p:' + knob + '">'
+    + '<div class="knob-ring"><div class="knob-dial"><span class="pointer"></span></div></div>'
+    + '<div class="knob-value">' + esc(text) + "</div>"
+    + '<div class="knob-label">' + esc(label) + "</div>"
+    + (extra || "")
+    + "</div>";
+}
+
+function renderBoard() {
+  const board = document.getElementById("board");
+  if (!state.order.length) {
+    board.innerHTML = '<p class="empty">Add a pedal to the chain.</p>';
+    return;
+  }
+  const html = [];
+  for (let i = 0; i < state.order.length; i++) {
+    const id = state.order[i];
+    const spec = PEDALS[id];
+    const pedal = state.pedals[id];
+    const chips = spec.types ? '<div class="chips" role="group" aria-label="' + esc(spec.name) + ' type">' + spec.types.map((t) => {
+      const on = t.id === pedal.type;
+      return '<button type="button" class="chip' + (on ? " on" : "") + '" data-type="' + t.id + '" aria-pressed="' + on + '">' + esc(t.label) + "</button>";
+    }).join("") + "</div>" : "";
+    const main = spec.main.map((param) => knobMarkup(id, param, spec.tap && param === "time" ? '<button type="button" class="tap">Tap</button>' : "")).join("");
+    const more = spec.more.map((param) => knobMarkup(id, param)).join("");
+    html.push(
+      '<article class="pedal c-' + id + (pedal.enabled ? " engaged" : "") + '" data-id="' + id + '">'
+      + '<i class="screw s1"></i><i class="screw s2"></i><i class="screw s3"></i>'
+      + '<header class="pedal-top">'
+      + '<span class="drag" aria-hidden="true">⋮⋮</span>'
+      + "<h2>" + esc(spec.name) + "</h2>"
+      + '<button type="button" class="stomp' + (pedal.enabled ? " on" : "") + '" aria-pressed="' + pedal.enabled + '" aria-label="' + esc(spec.name) + (pedal.enabled ? " on" : " off") + '"><span class="led"></span></button>'
+      + "</header>"
+      + '<div class="face">' + chips
+      + '<div class="knobs knobs-' + spec.main.length + '">' + main + "</div>"
+      + '<div class="more-panel"' + (pedal.more ? "" : " hidden") + '><div class="knobs knobs-' + spec.more.length + '">' + more + "</div></div>"
+      + "</div>"
+      + '<footer class="pedal-foot">'
+      + '<button type="button" class="more-btn" aria-expanded="' + pedal.more + '">' + (pedal.more ? "Less" : "More") + "</button>"
+      + '<div class="nudges">'
+      + '<button type="button" class="nudge" data-dir="-1" aria-label="Move ' + esc(spec.name) + ' earlier"' + (i === 0 ? " disabled" : "") + '><span class="chev"></span></button>'
+      + '<button type="button" class="nudge" data-dir="1" aria-label="Move ' + esc(spec.name) + ' later"' + (i === state.order.length - 1 ? " disabled" : "") + '><span class="chev"></span></button>'
+      + "</div>"
+      + '<button type="button" class="remove">Remove</button>'
+      + "</footer></article>"
+    );
+  }
+  board.innerHTML = html.join("");
+  nudgeGlyphs();
+  paintFromState();
+}
+
+function renderAdd() {
+  const row = document.getElementById("addRow");
+  const missing = PEDAL_IDS.filter((id) => state.order.indexOf(id) === -1);
+  if (!missing.length) {
+    row.innerHTML = '<span class="add-all">All pedals are on the board.</span>';
+    return;
+  }
+  row.innerHTML = missing.map((id) => '<button type="button" data-add="' + id + '">Add ' + esc(PEDALS[id].name) + "</button>").join("");
+}
+
+function renderPresets() {
+  document.getElementById("presets").innerHTML = PRESETS.map((p) =>
+    '<button type="button" data-preset="' + p.id + '" aria-pressed="false">' + esc(p.name) + "</button>"
+  ).join("");
+  highlightPreset();
+}
+
+function writeKnob(pedal, param, value) {
+  const v = clamp01(value);
+  if (pedal === "global") {
+    if (param === "input") {
+      state.inputGain = v * INPUT_GAIN_MAX;
+      if (engine.ctx) engine.setInputGain(state.inputGain);
+    } else {
+      state.master = v;
+      if (engine.ctx) engine.setMaster(state.master);
+    }
+  } else {
+    state.pedals[pedal].params[param] = v;
+    state.preset = null;
+    highlightPreset();
+    if (engine.ctx) engine.setPedal(pedal, state.pedals[pedal], false);
+  }
+  paintFromState();
+  scheduleSave();
+}
+
+function commitOrder(next) {
+  if (next.join("|") === state.order.join("|")) return;
+  state.order = next;
+  for (let i = 0; i < PEDAL_IDS.length; i++) {
+    state.pedals[PEDAL_IDS[i]].onBoard = next.indexOf(PEDAL_IDS[i]) !== -1;
+  }
+  state.preset = null;
+  highlightPreset();
+  const board = document.getElementById("board");
+  const have = [];
+  const cards = board.querySelectorAll(".pedal");
+  for (let i = 0; i < cards.length; i++) have.push(cards[i].dataset.id);
+  const same = have.length === next.length && next.every((id) => have.indexOf(id) !== -1);
+  if (same) {
+    for (let i = 0; i < next.length; i++) {
+      const el = board.querySelector('.pedal[data-id="' + next[i] + '"]');
+      if (el) board.appendChild(el);
+    }
+    const ordered = board.querySelectorAll(".pedal");
+    for (let i = 0; i < ordered.length; i++) {
+      const prev = ordered[i].querySelector('[data-dir="-1"]');
+      const nxt = ordered[i].querySelector('[data-dir="1"]');
+      if (prev) prev.disabled = i === 0;
+      if (nxt) nxt.disabled = i === ordered.length - 1;
+    }
+  } else {
+    renderBoard();
+  }
+  chainLabel();
+  if (engine.ctx) engine.setOrder(next);
+  scheduleSave();
+}
+
+function fillDevices(list) {
+  const sel = document.getElementById("device");
+  const current = state.deviceId;
+  sel.replaceChildren();
+  const def = document.createElement("option");
+  def.value = "";
+  def.textContent = "Default microphone";
+  sel.appendChild(def);
+  const devices = list || [];
+  for (let i = 0; i < devices.length; i++) {
+    const o = document.createElement("option");
+    o.value = devices[i].deviceId;
+    o.textContent = devices[i].label || "Microphone";
+    sel.appendChild(o);
+  }
+  const known = [...sel.options].some((o) => o.value === current);
+  sel.value = known ? current : "";
+}
+
+async function toggleStart() {
+  const btn = document.getElementById("start");
+  const live = document.getElementById("live");
+  if (engine.running) {
+    await engine.stop();
+    btn.textContent = "Start";
+    btn.classList.remove("is-on");
+    live.hidden = true;
+    setStatus("Stopped.");
+    meterHold = 0;
+    paintMeter(0);
+    return;
+  }
+  btn.disabled = true;
+  try {
+    await engine.start(state);
+    btn.textContent = "Stop";
+    btn.classList.add("is-on");
+    live.hidden = false;
+    setStatus(state.source === "test" ? "Test sound playing." : "Guitar input.");
+  } catch (err) {
+    if (engine.running) {
+      btn.textContent = "Stop";
+      btn.classList.add("is-on");
+      live.hidden = false;
+    }
+    setStatus("Microphone blocked. Switch to Test sound, or allow the mic and try again.");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function setSource(source) {
+  state.source = source;
+  paintSource();
+  scheduleSave();
+  if (!engine.running) return;
+  try {
+    await engine.applySource(source, state.deviceId);
+    setStatus(source === "test" ? "Test sound playing." : "Guitar input.");
+  } catch (err) {
+    setStatus("Microphone blocked. You can still use the test sound.");
+  }
+}
+
+function choosePreset(id) {
+  state = applyPreset(state, id);
+  if (engine.ctx) engine.sync(state, true);
+  renderBoard();
+  renderAdd();
+  chainLabel();
+  highlightPreset();
+  paintFromState();
+  saveNow();
+}
+
+function addPedal(id) {
+  if (state.order.indexOf(id) !== -1) return;
+  state.order = state.order.concat(id);
+  state.pedals[id].onBoard = true;
+  state.pedals[id].enabled = true;
+  state.preset = null;
+  if (engine.ctx) {
+    engine.setPedal(id, state.pedals[id], false);
+    engine.setOrder(state.order);
+  }
+  renderBoard();
+  renderAdd();
+  chainLabel();
+  highlightPreset();
+  scheduleSave();
+}
+
+function removePedal(id) {
+  state.order = state.order.filter((x) => x !== id);
+  state.pedals[id].onBoard = false;
+  state.pedals[id].enabled = false;
+  state.preset = null;
+  if (engine.ctx) {
+    engine.setPedal(id, state.pedals[id], false);
+    engine.setOrder(state.order);
+  }
+  renderBoard();
+  renderAdd();
+  chainLabel();
+  highlightPreset();
+  scheduleSave();
+}
+
+function setType(id, type) {
+  if (!validType(id, type) || state.pedals[id].type === type) return;
+  state.pedals[id].type = type;
+  state.preset = null;
+  if (engine.ctx) engine.setPedal(id, state.pedals[id], true);
+  renderBoard();
+  chainLabel();
+  highlightPreset();
+  scheduleSave();
+}
+
+function doTap() {
+  const now = performance.now();
+  if (!taps.length || now - taps[taps.length - 1] > 2000) taps = [];
+  taps.push(now);
+  if (taps.length > 4) taps.shift();
+  if (taps.length < 2) return;
+  let sum = 0;
+  for (let i = 1; i < taps.length; i++) sum += taps[i] - taps[i - 1];
+  writeKnob("delay", "time", knobFromDelaySeconds(sum / (taps.length - 1) / 1000));
+}
+
+function dropIndex(id, x, y) {
+  const board = document.getElementById("board");
+  const cards = [...board.querySelectorAll(".pedal")].filter((el) => el.dataset.id !== id);
+  const horizontal = getComputedStyle(board).flexDirection === "row";
+  const pos = horizontal ? x : y;
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    const mid = horizontal ? r.left + r.width / 2 : r.top + r.height / 2;
+    if (pos < mid) return i;
+  }
+  return cards.length;
+}
+
+function init() {
+  document.title = APP_CONFIG.name;
+  const title = document.getElementById("appTitle");
+  title.textContent = APP_CONFIG.name;
+  const apple = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+  if (apple) apple.setAttribute("content", APP_CONFIG.name);
+
+  document.getElementById("inputSlot").innerHTML = knobMarkup("global", "input");
+  document.getElementById("masterSlot").innerHTML = knobMarkup("global", "master");
+  renderPresets();
+  renderBoard();
+  renderAdd();
+  chainLabel();
+  paintSource();
+  paintFromState();
+  fillDevices([]);
+
+  engine.onMeter = paintMeter;
+  engine.onDevices = fillDevices;
+
+  document.getElementById("start").addEventListener("click", toggleStart);
+  document.getElementById("presets").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-preset]");
+    if (btn) choosePreset(btn.dataset.preset);
+  });
+  document.querySelector(".source").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-source]");
+    if (btn) setSource(btn.dataset.source);
+  });
+  document.getElementById("device").addEventListener("change", async (e) => {
+    state.deviceId = e.target.value;
+    scheduleSave();
+    if (engine.running && state.source === "guitar") {
+      try {
+        await engine.openMic(state.deviceId);
+        setStatus("Guitar input.");
+      } catch (err) {
+        setStatus("Couldn't open that input.");
+      }
+    }
+  });
+  document.getElementById("addRow").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-add]");
+    if (btn) addPedal(btn.dataset.add);
+  });
+
+  const board = document.getElementById("board");
+  board.addEventListener("click", (e) => {
+    const card = e.target.closest(".pedal");
+    if (!card) return;
+    const id = card.dataset.id;
+    if (e.target.closest(".stomp")) {
+      const pedal = state.pedals[id];
+      pedal.enabled = !pedal.enabled;
+      state.preset = null;
+      card.classList.toggle("engaged", pedal.enabled);
+      const stomp = card.querySelector(".stomp");
+      stomp.classList.toggle("on", pedal.enabled);
+      stomp.setAttribute("aria-pressed", String(pedal.enabled));
+      stomp.setAttribute("aria-label", PEDALS[id].name + (pedal.enabled ? " on" : " off"));
+      highlightPreset();
+      if (engine.ctx) engine.setPedal(id, pedal, false);
+      scheduleSave();
+      return;
+    }
+    const chip = e.target.closest(".chip");
+    if (chip) { setType(id, chip.dataset.type); return; }
+    if (e.target.closest(".more-btn")) {
+      state.pedals[id].more = !state.pedals[id].more;
+      renderBoard();
+      scheduleSave();
+      return;
+    }
+    const nudge = e.target.closest(".nudge");
+    if (nudge && !nudge.disabled) {
+      const index = state.order.indexOf(id);
+      commitOrder(moveItem(state.order, index, Number(nudge.dataset.dir)));
+      return;
+    }
+    if (e.target.closest(".remove")) removePedal(id);
+    if (e.target.closest(".tap")) doTap();
+  });
+
+  board.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    const top = e.target.closest(".pedal-top");
+    if (!top || e.target.closest("button")) return;
+    const card = top.closest(".pedal");
+    drag = { id: card.dataset.id, pointer: e.pointerId };
+    top.setPointerCapture(e.pointerId);
+  });
+  board.addEventListener("pointermove", (e) => {
+    if (!drag || e.pointerId !== drag.pointer) return;
+    const target = dropIndex(drag.id, e.clientX, e.clientY);
+    const next = reorder(state.order, drag.id, target);
+    if (next.join("|") !== state.order.join("|")) commitOrder(next);
+  });
+  board.addEventListener("pointerup", (e) => {
+    if (drag && e.pointerId === drag.pointer) drag = null;
+  });
+  board.addEventListener("pointercancel", () => { drag = null; });
+
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.closest && e.target.closest(".tap")) return;
+    const el = e.target.closest && e.target.closest(".knob");
+    if (!el) return;
+    e.preventDefault();
+    const pedal = el.dataset.pedal;
+    const param = el.dataset.param;
+    const start = readKnob(pedal, param);
+    const x0 = e.clientX;
+    const y0 = e.clientY;
+    const move = (ev) => {
+      const dy = y0 - ev.clientY;
+      const dx = ev.clientX - x0;
+      const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
+      const scale = ev.shiftKey ? 1 / 420 : 1 / 150;
+      writeKnob(pedal, param, start + delta * scale);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  });
+
+  document.addEventListener("wheel", (e) => {
+    const el = e.target.closest && e.target.closest(".knob");
+    if (!el || (e.target.closest && e.target.closest(".tap"))) return;
+    e.preventDefault();
+    const dir = e.deltaY < 0 ? 1 : -1;
+    writeKnob(el.dataset.pedal, el.dataset.param, readKnob(el.dataset.pedal, el.dataset.param) + dir * 0.03);
+  }, { passive: false });
+
+  document.addEventListener("keydown", (e) => {
+    const el = e.target.closest && e.target.closest(".knob");
+    if (!el) return;
+    let delta = 0;
+    if (e.key === "ArrowUp" || e.key === "ArrowRight") delta = e.shiftKey ? 0.01 : 0.02;
+    else if (e.key === "ArrowDown" || e.key === "ArrowLeft") delta = e.shiftKey ? -0.01 : -0.02;
+    else if (e.key === "PageUp") delta = 0.1;
+    else if (e.key === "PageDown") delta = -0.1;
+    else if (e.key === "Home") delta = -1;
+    else if (e.key === "End") delta = 1;
+    else return;
+    e.preventDefault();
+    const cur = readKnob(el.dataset.pedal, el.dataset.param);
+    writeKnob(el.dataset.pedal, el.dataset.param, delta === 1 ? 1 : delta === -1 ? 0 : cur + delta);
+  });
+
+  window.matchMedia("(min-width: 900px)").addEventListener("change", nudgeGlyphs);
+  window.addEventListener("pagehide", saveNow);
+  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener("devicechange", () => {
+      if (!navigator.mediaDevices.enumerateDevices) return;
+      navigator.mediaDevices.enumerateDevices().then((all) => {
+        fillDevices(all.filter((d) => d.kind === "audioinput"));
+      }).catch(() => {});
+    });
+  }
+
+  window.__lab = {
+    get state() { return state; },
+    get meter() { return engine.meter; },
+    get peakMeter() { return engine.peakMeter; },
+    get running() { return engine.running; },
+    get contextState() { return engine.ctx ? engine.ctx.state : "none"; },
+    get constraints() { return engine.constraints; },
+    get attempts() { return engine.attempts; },
+    get reverbMode() { return engine.reverbMode; },
+    APP_CONFIG,
+  };
+}
+
+if (typeof document !== "undefined") init();
+
+  </script>
+</body>
+</html>
