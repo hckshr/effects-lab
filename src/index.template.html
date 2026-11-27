@@ -14,19 +14,29 @@
     <header class="top">
       <div class="title-row">
         <h1 id="appTitle">/*APP_NAME*/</h1>
-        <p id="live" class="live-flag" hidden>Live</p>
       </div>
       <p id="tip" class="tip">Wear headphones if you use the phone mic, so the sound doesn't feed back.</p>
       <div class="controls">
         <div>
-          <button id="start" type="button">Start</button>
-          <p id="status" role="status"></p>
-          <div class="source" role="group" aria-label="Sound source">
-            <button type="button" data-source="guitar" aria-pressed="true">Guitar input</button>
-            <button type="button" data-source="test" aria-pressed="false">Test sound</button>
+          <div id="player">
+            <button id="playNote" type="button">Play note</button>
+            <div class="octave-row">
+              <button type="button" id="octaveDown" aria-label="Octave down">−</button>
+              <p id="noteReadout" class="note-readout">C3</p>
+              <button type="button" id="octaveUp" aria-label="Octave up">+</button>
+            </div>
+            <div id="notes" class="notes" role="group" aria-label="Note"></div>
+            <div id="sounds" class="sounds" role="group" aria-label="Sound"></div>
+            <button type="button" id="repeat" aria-pressed="false">Repeat</button>
+            <button type="button" id="useGuitar" class="quiet">Use my guitar</button>
           </div>
-          <label class="device-label" for="device">Input</label>
-          <select id="device" aria-label="Audio input"></select>
+          <div id="guitarBox" hidden>
+            <button type="button" id="useGuitarNow">Use my guitar</button>
+            <label class="device-label" for="device">Input</label>
+            <select id="device" aria-label="Audio input"></select>
+            <button type="button" id="playNotes" class="quiet">Play notes</button>
+          </div>
+          <p id="status" role="status"></p>
         </div>
         <div class="levels">
           <div class="meter-block">

@@ -367,39 +367,59 @@ class Engine {
     this.noteTimers = [];
     this.testLive = false;
     this.shells = {};
+    this.built = false;
+    this.tone = null;
+    this.repeatTimer = null;
+    this.repeatSpec = null;
   }
 
-  async start(state) {
+  // Call from the user gesture, before any await, so the browser unlocks audio.
+  ensureContext() {
     if (!this.ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
       this.ctx = new AC({ latencyHint: "interactive" });
-      await this.ctx.resume();
+    }
+    this.ctx.resume();
+    return this.ctx;
+  }
+
+  async prepare(state) {
+    this.ensureContext();
+    if (this.ctx.state === "suspended") await this.ctx.resume();
+    if (!this.built) {
       await this.loadWorklet();
       this.build();
-      this.sync(state, false);
+      this.built = true;
       this.order = state.order.slice();
       this.reconnectNow();
-    } else {
-      await this.ctx.resume();
-      this.sync(state, false);
     }
+    this.sync(state, false);
     this.running = true;
-    this.peakMeter = 0;
-    this.displayPeak = 0;
-    try {
-      await this.applySource(state.source, state.deviceId);
-      this.inputError = null;
-    } catch (err) {
-      this.inputError = err;
-      this.tick();
-      throw err;
-    }
-    this.tick();
+    if (!this.raf) this.tick();
+    approach(this.ctx, this.testGain.gain, 0.9, 0.015);
+  }
+
+  async useGuitar(deviceId) {
+    this.stopTest();
+    this.stopRepeat();
+    this.releaseTone(0.05);
+    approach(this.ctx, this.testGain.gain, 0, 0.02);
+    await this.openMic(deviceId);
+    approach(this.ctx, this.micGain.gain, 1, 0.03);
+  }
+
+  leaveGuitar() {
+    this.stopMic();
+    if (!this.ctx || !this.micGain) return;
+    approach(this.ctx, this.micGain.gain, 0, 0.02);
+    approach(this.ctx, this.testGain.gain, 0.9, 0.02);
   }
 
   async stop() {
     this.running = false;
     this.stopTest();
+    this.stopRepeat();
+    this.releaseTone(0.05);
     this.stopMic();
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.ctx && this.ctx.state === "running") await this.ctx.suspend();
@@ -817,17 +837,11 @@ class Engine {
   }
 
   async applySource(source, deviceId) {
-    if (source === "test") {
-      this.stopMic();
-      approach(this.ctx, this.micGain.gain, 0, 0.015);
-      approach(this.ctx, this.testGain.gain, 0.9, 0.02);
-      this.startTest();
+    if (source !== "guitar") {
+      this.leaveGuitar();
       return;
     }
-    this.stopTest();
-    approach(this.ctx, this.testGain.gain, 0, 0.015);
-    await this.openMic(deviceId);
-    approach(this.ctx, this.micGain.gain, 1, 0.02);
+    await this.useGuitar(deviceId);
   }
 
   async openMic(deviceId) {
@@ -921,6 +935,125 @@ class Engine {
     this.testLive = false;
     clearTimeout(this.testTimer);
     this.testTimer = null;
+  }
+
+  playOnce(spec) {
+    if (!this.ctx) return;
+    const freq = noteFrequency(spec.note, spec.octave);
+    if (spec.sound === "chord") this.strum(this.ctx.currentTime + 0.02, majorChordFrequencies(freq), 0.16);
+    else if (spec.sound === "tone") this.blipTone(freq, 2.1);
+    else if (spec.sound === "loop") this.playLoopOnce();
+    else this.pluck(this.ctx.currentTime + 0.02, freq, 0.28);
+  }
+
+  playDown(spec) {
+    this.stopRepeat();
+    if (spec.sound === "tone") {
+      this.stopTest();
+      this.beginTone(noteFrequency(spec.note, spec.octave));
+      return;
+    }
+    if (spec.sound === "loop" && spec.repeat) {
+      this.startTest();
+      return;
+    }
+    this.stopTest();
+    this.playOnce(spec);
+    if (spec.repeat) this.armRepeat(spec);
+  }
+
+  playUp(spec, heldMs) {
+    if (spec.sound !== "tone") return;
+    if (heldMs < 280) this.scheduleToneEnd(2.1);
+    else this.releaseTone(0.15);
+    if (spec.repeat) this.armRepeat(spec);
+  }
+
+  armRepeat(spec) {
+    this.repeatSpec = {
+      sound: spec.sound,
+      note: spec.note,
+      octave: spec.octave,
+      repeat: true,
+    };
+    if (this.repeatTimer) return;
+    this.repeatTimer = setInterval(() => {
+      if (!this.repeatSpec || !this.ctx) return;
+      if (this.repeatSpec.sound === "loop") return;
+      this.playOnce(this.repeatSpec);
+    }, 2400);
+  }
+
+  updateRepeat(spec) {
+    if (!this.repeatSpec) return;
+    this.repeatSpec = {
+      sound: spec.sound,
+      note: spec.note,
+      octave: spec.octave,
+      repeat: true,
+    };
+  }
+
+  stopRepeat() {
+    clearInterval(this.repeatTimer);
+    this.repeatTimer = null;
+    this.repeatSpec = null;
+  }
+
+  playLoopOnce() {
+    this.stopTest();
+    const spb = 60 / 78;
+    const t0 = this.ctx.currentTime + 0.03;
+    for (let i = 0; i < 4; i++) this.fireBeat(t0 + i * spb, i);
+  }
+
+  beginTone(freq) {
+    this.releaseTone(0.02);
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.value = freq;
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 1400;
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.2, now + 0.03);
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.testGain);
+    osc.start(now);
+    this.tone = { osc, filter, gain };
+  }
+
+  scheduleToneEnd(seconds) {
+    clearTimeout(this.toneTimer);
+    this.toneTimer = setTimeout(() => this.releaseTone(0.35), Math.max(0, seconds) * 1000);
+  }
+
+  blipTone(freq, seconds) {
+    this.beginTone(freq);
+    this.scheduleToneEnd(seconds);
+  }
+
+  releaseTone(fade) {
+    clearTimeout(this.toneTimer);
+    this.toneTimer = null;
+    if (!this.tone || !this.ctx) {
+      this.tone = null;
+      return;
+    }
+    const fadeSec = fade == null ? 0.08 : fade;
+    const now = this.ctx.currentTime;
+    const gain = this.tone.gain.gain;
+    const current = Math.max(0.0001, gain.value || 0.0001);
+    gain.cancelScheduledValues(now);
+    gain.setValueAtTime(current, now);
+    gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.03, fadeSec));
+    try { this.tone.osc.stop(now + fadeSec + 0.05); } catch (err) { /* already stopped */ }
+    this.collect(now + fadeSec + 0.08, [this.tone.osc, this.tone.filter, this.tone.gain]);
+    this.tone = null;
   }
 
   fireBeat(time, beat) {

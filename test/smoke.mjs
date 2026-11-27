@@ -62,73 +62,85 @@ try {
     hasTouch: true,
     permissions: ["microphone"],
   });
+  await context.addInitScript(() => {
+    window.__gumCalls = [];
+    const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = (constraints) => {
+      window.__gumCalls.push(constraints);
+      return orig(constraints);
+    };
+  });
   const page = await context.newPage();
   watch(page);
-  await page.goto(base, { waitUntil: "networkidle" });
+  await page.goto(base, { waitUntil: "domcontentloaded" });
   assert.equal(await page.title(), "Effects Lab");
   assert.match(await page.locator("#appTitle").innerText(), /Effects Lab/);
   assert.match(await page.locator("#tip").innerText(), /headphones/i);
-  assert.match(await page.locator("#tip").innerText(), /phone mic/i);
-  assert.match(await page.locator("#chainLabel").innerText(), /Room/);
+  assert.equal(await page.locator("#start").count(), 0);
+  assert.equal(await page.locator("#playNote").innerText(), "Play note");
+  assert.equal(await page.locator("#noteReadout").innerText(), "C3");
+  assert.equal(await page.locator("#player").isVisible(), true);
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
 
-  await page.locator("#start").click();
+  await page.locator("#playNote").click();
   await page.waitForFunction(() => window.__lab && window.__lab.contextState === "running");
-  const attempt = await page.evaluate(() => window.__lab.attempts[0]);
-  assert.equal(attempt.echoCancellation, false);
-  assert.equal(attempt.noiseSuppression, false);
-  assert.equal(attempt.autoGainControl, false);
-  assert.equal(attempt.latency, 0);
-  const used = await page.evaluate(() => window.__lab.constraints);
-  assert.equal(used.echoCancellation, false);
-  assert.equal(used.noiseSuppression, false);
-  assert.equal(used.autoGainControl, false);
-
-  await page.locator('[data-source="test"]').click();
   await page.waitForFunction(() => window.__lab.peakMeter > 0.004, null, { timeout: 5000 });
+  await page.waitForFunction(() => Number(document.getElementById("meter").getAttribute("aria-valuenow")) > 12, null, { timeout: 4000 });
+  assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
   const mode = await page.evaluate(() => window.__lab.reverbMode);
   assert.ok(mode === "worklet" || mode === "convolver", mode);
+  const phonePath = path.join(artifacts, "effects_lab_note_player_phone.png");
+  await page.screenshot({ path: phonePath, fullPage: true });
+
+  await page.locator('[data-note="E"]').click();
+  await page.locator("#octaveUp").click();
+  await page.locator('[data-sound="chord"]').click();
+  await page.locator("#playNote").click();
+  await page.waitForTimeout(200);
+  assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
+  assert.equal(await page.locator("#noteReadout").innerText(), "E4");
+
+  await page.locator('[data-sound="pluck"]').click();
+  await page.locator("#playNote").click();
 
   await page.locator('[data-preset="ambient"]').click();
   await page.waitForFunction(() => /Chorus/.test(document.getElementById("chainLabel").textContent)
     && /Delay/.test(document.getElementById("chainLabel").textContent)
     && /Hall/.test(document.getElementById("chainLabel").textContent));
-
   const reverb = page.locator('.pedal[data-id="reverb"]');
   await reverb.locator(".more-btn").click();
   await reverb.locator('[data-param="width"]').waitFor();
   await page.locator('[data-preset="ambient"]').click();
-
   const stomp = page.locator('.pedal[data-id="delay"] .stomp');
   await stomp.click();
   assert.equal(await stomp.getAttribute("aria-pressed"), "false");
   await stomp.click();
   assert.equal(await stomp.getAttribute("aria-pressed"), "true");
-
   await page.locator('.pedal[data-id="delay"] .nudge[data-dir="-1"]').click();
   await page.waitForFunction(() => document.getElementById("chainLabel").textContent.startsWith("Delay"));
-  await page.locator('[data-preset="ambient"]').click();
 
-  await page.locator('[data-preset="slapback"]').click();
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.getElementById("chainLabel").textContent === "Delay");
+  await page.locator("#useGuitar").click();
+  await page.waitForFunction(() => window.__gumCalls.length > 0);
+  const attempt = await page.evaluate(() => window.__gumCalls[0].audio);
+  assert.equal(attempt.echoCancellation, false);
+  assert.equal(attempt.noiseSuppression, false);
+  assert.equal(attempt.autoGainControl, false);
+  assert.equal(attempt.latency, 0);
+  const afterGuitar = await page.evaluate(() => window.__gumCalls.length);
 
-  await page.locator("#start").click();
-  await page.waitForFunction(() => window.__lab.contextState === "running");
-  await page.locator('[data-source="test"]').click();
-  await page.locator('[data-preset="ambient"]').click();
-  await page.waitForFunction(() => window.__lab.peakMeter > 0.004, null, { timeout: 5000 });
-  await page.waitForFunction(() => Number(document.getElementById("meter").getAttribute("aria-valuenow")) > 18, null, { timeout: 4000 });
+  await page.locator("#playNotes").click();
+  await page.locator("#playNote").click();
+  await page.waitForTimeout(250);
+  assert.equal(await page.evaluate(() => window.__gumCalls.length), afterGuitar);
 
-  const phonePath = path.join(artifacts, "effects_lab_phone.png");
-  await page.screenshot({ path: phonePath, fullPage: true });
-
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.waitForFunction(() => Number(document.getElementById("meter").getAttribute("aria-valuenow")) > 18, null, { timeout: 4000 });
-  const desktopPath = path.join(artifacts, "effects_lab_desktop.png");
-  await page.screenshot({ path: desktopPath, fullPage: true });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
+  assert.equal(await page.locator("#playNote").isVisible(), true);
 
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log("smoke ok", mode, phonePath, desktopPath);
+  console.log("smoke ok", mode, phonePath);
   await browser.close();
   server.close();
 } catch (err) {

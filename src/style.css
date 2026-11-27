@@ -51,44 +51,81 @@ h1 {
   letter-spacing: -0.03em;
 }
 
-.live-flag {
-  margin: 0;
-  color: #b7e2b0;
-  font-size: 0.85rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
 .tip {
   margin: 8px 0 14px;
   color: var(--muted);
   max-width: 40rem;
 }
 
-#start {
+#playNote, #useGuitarNow {
   width: 100%;
   min-height: 76px;
   border: 0;
   border-radius: 14px;
   background: var(--cream);
   color: var(--ink);
-  font-size: 1.5rem;
+  font-size: 1.45rem;
   font-weight: 750;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   box-shadow: 0 8px 0 #6d6456;
+  touch-action: none;
 }
 
-#start:active { transform: translateY(2px); box-shadow: 0 6px 0 #6d6456; }
-
-#start.is-on {
-  min-height: 48px;
-  font-size: 1rem;
-  letter-spacing: 0.08em;
-  background: #243127;
-  color: #c6ecc0;
-  box-shadow: none;
+#playNote:active, #playNote.is-down, #useGuitarNow:active {
+  transform: translateY(2px);
+  box-shadow: 0 6px 0 #6d6456;
 }
+
+.octave-row {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) 52px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+#octaveDown, #octaveUp {
+  min-height: 64px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 234, 215, 0.2);
+  background: #1a1815;
+  font-size: 1.6rem;
+}
+
+#octaveDown:disabled, #octaveUp:disabled { opacity: 0.35; }
+
+.note-readout {
+  margin: 0;
+  text-align: center;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.notes, .sounds {
+  display: grid;
+  gap: 6px;
+}
+
+.notes { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 8px; }
+.sounds { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; }
+
+.notes button, .sounds button, #repeat, .quiet {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.notes button { font-size: 0.85rem; padding: 0; }
+.notes button.on, .sounds button.on, #repeat.on {
+  background: var(--cream);
+  color: var(--ink);
+  border-color: transparent;
+}
+
+#repeat, .quiet { width: 100%; margin-top: 8px; }
+.quiet { color: var(--muted); background: transparent; }
 
 #status {
   min-height: 1.3em;
@@ -97,28 +134,8 @@ h1 {
   font-size: 0.92rem;
 }
 
-.source {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.source button, .presets button, .add-row button, .chip, .nudge, .remove, .more-btn, .tap {
+.presets button, .add-row button, .chip, .nudge, .remove, .more-btn, .tap, .notes button, .sounds button, #repeat, .quiet, #octaveDown, #octaveUp {
   -webkit-tap-highlight-color: transparent;
-}
-
-.source button {
-  min-height: 48px;
-  border-radius: 12px;
-  border: 1px solid rgba(243, 234, 215, 0.16);
-  background: #1a1815;
-}
-
-.source button.on {
-  background: var(--cream);
-  color: var(--ink);
-  border-color: transparent;
 }
 
 .device-label {
