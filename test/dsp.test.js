@@ -31,8 +31,11 @@ import {
   moveItem,
   noteFrequency,
   reorder,
+  REPEAT_COPY,
   serialize,
   storageKeyFor,
+  TEST_SOUND_COPY,
+  TEST_SOUNDS,
 } from "../src/dsp.js";
 import { loopGainForDelay, MAX_REVERB_LOOP, fillDelaySamples } from "../src/reverb-core.js";
 
@@ -54,6 +57,32 @@ test("double-tap timing and knob defaults", () => {
   const back = hydrate(saved);
   assert.ok(back.pedals.delay.params.feedback <= 1);
   assert.ok(back.inputGain <= 3);
+});
+
+test("test sounds use plain names and a one-line hint", () => {
+  assert.deepEqual(TEST_SOUNDS, ["pluck", "chord", "tone", "loop"]);
+  assert.deepEqual(TEST_SOUND_COPY.pluck, {
+    label: "Single note",
+    hint: "One guitar-like note; hear the reverb/delay tail",
+  });
+  assert.deepEqual(TEST_SOUND_COPY.chord, { label: "Chord", hint: "Strummed chord" });
+  assert.deepEqual(TEST_SOUND_COPY.tone, {
+    label: "Held note",
+    hint: "Steady note; good for chorus/tremolo",
+  });
+  assert.deepEqual(TEST_SOUND_COPY.loop, {
+    label: "Riff",
+    hint: "Repeating note + snare pattern",
+  });
+  assert.deepEqual(REPEAT_COPY, {
+    label: "Auto-replay",
+    hint: "Replays every couple of seconds so you can tweak knobs hands-free",
+  });
+  const copies = TEST_SOUNDS.map((id) => TEST_SOUND_COPY[id]).concat([REPEAT_COPY]);
+  for (const copy of copies) {
+    assert.equal(copy.hint.includes("\n"), false);
+    assert.ok(copy.label.length > 0 && copy.hint.length > copy.label.length / 2);
+  }
 });
 
 test("first load is the test note, not the microphone", () => {

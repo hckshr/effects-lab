@@ -78,10 +78,34 @@ try {
   assert.match(await page.locator("#tip").innerText(), /headphones/i);
   assert.equal(await page.locator("#start").count(), 0);
   assert.equal(await page.locator("#playNote").innerText(), "Play note");
+  const choices = [
+    ["[data-sound='pluck']", "Single note", "One guitar-like note; hear the reverb/delay tail"],
+    ["[data-sound='chord']", "Chord", "Strummed chord"],
+    ["[data-sound='tone']", "Held note", "Steady note; good for chorus/tremolo"],
+    ["[data-sound='loop']", "Riff", "Repeating note + snare pattern"],
+    ["#repeat", "Auto-replay", "Replays every couple of seconds so you can tweak knobs hands-free"],
+  ];
+  for (const [sel, label, hint] of choices) {
+    const btn = page.locator(sel);
+    assert.equal(await btn.locator(".choice-name").innerText(), label);
+    assert.equal(await btn.locator(".choice-hint").innerText(), hint);
+    assert.equal(await btn.getAttribute("title"), null);
+    const box = await btn.boundingBox();
+    assert.ok(box.height >= 56, sel + " is " + box.height + "px tall");
+    const hintStyle = await btn.locator(".choice-hint").evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { display: style.display, visibility: style.visibility, fontSize: parseFloat(style.fontSize) };
+    });
+    assert.notEqual(hintStyle.display, "none");
+    assert.equal(hintStyle.visibility, "visible");
+    assert.ok(hintStyle.fontSize >= 13, sel + " hint is " + hintStyle.fontSize + "px");
+  }
   assert.equal(await page.locator("#noteReadout").innerText(), "C3");
   assert.equal(await page.locator("#player").isVisible(), true);
   await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
+  const playerShot = path.join(artifacts, "effects_lab_sound_choices_phone.png");
+  await page.locator("#player").screenshot({ path: playerShot });
 
   await page.locator("#playNote").click();
   await page.waitForFunction(() => window.__lab && window.__lab.contextState === "running");
