@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#100e0c" />
+  <meta name="apple-mobile-web-app-title" content="/*APP_NAME*/" />
+  <meta name="description" content="A simple guitar pedalboard in the browser: drive, modulation, filter, delay, and reverb." />
+  <title>/*APP_NAME*/</title>
+  <style>/*CSS*/</style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="title-row">
+        <h1 id="appTitle">/*APP_NAME*/</h1>
+        <p id="live" class="live-flag" hidden>Live</p>
+      </div>
+      <p id="tip" class="tip">Wear headphones if you use the phone mic, so the sound doesn't feed back.</p>
+      <div class="controls">
+        <div>
+          <button id="start" type="button">Start</button>
+          <p id="status" role="status"></p>
+          <div class="source" role="group" aria-label="Sound source">
+            <button type="button" data-source="guitar" aria-pressed="true">Guitar input</button>
+            <button type="button" data-source="test" aria-pressed="false">Test sound</button>
+          </div>
+          <label class="device-label" for="device">Input</label>
+          <select id="device" aria-label="Audio input"></select>
+        </div>
+        <div class="levels">
+          <div class="meter-block">
+            <span>Level</span>
+            <div id="meter" class="meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div id="meterFill"></div>
+            </div>
+          </div>
+          <div id="inputSlot"></div>
+          <div id="masterSlot"></div>
+        </div>
+      </div>
+    </header>
+    <div id="presets" class="presets" role="group" aria-label="Presets"></div>
+    <section class="board-wrap" aria-label="Pedalboard">
+      <p id="chainLabel" class="chain"></p>
+      <div id="board" class="board"></div>
+      <div id="addRow" class="add-row"></div>
+    </section>
+  </main>
+  <script type="module">
+    const WORKLET_URL = "/*WORKLET_URL*/";
+    /*JS*/
+  </script>
+</body>
+</html>

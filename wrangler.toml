@@ -1,0 +1,17 @@
+# Live: https://effects-lab.hckshr.workers.dev
+name = "effects-lab"
+main = "worker.js"
+compatibility_date = "2026-11-27"
+workers_dev = true
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 0.01
