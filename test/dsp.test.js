@@ -19,12 +19,14 @@ import {
   knobFromDelaySeconds,
   logMap,
   logUnmap,
+  majorChordFrequencies,
   makeHardCurve,
   makeSafetyCurve,
   makeSoftCurve,
   mapParam,
   meterPercent,
   moveItem,
+  noteFrequency,
   reorder,
   serialize,
   storageKeyFor,
@@ -33,6 +35,24 @@ import { loopGainForDelay, MAX_REVERB_LOOP, fillDelaySamples } from "../src/reve
 
 test("storage key follows the display name", () => {
   assert.equal(storageKeyFor("Effects Lab"), "effects-lab:v1");
+});
+
+test("first load is the test note, not the microphone", () => {
+  const state = initialState();
+  assert.equal(state.source, "test");
+  assert.equal(state.player.note, "C");
+  assert.equal(state.player.octave, 3);
+  assert.equal(state.player.sound, "pluck");
+  assert.equal(state.player.repeat, false);
+  assert.ok(Math.abs(noteFrequency("A", 4) - 440) < 0.001);
+  assert.ok(Math.abs(noteFrequency("C", 4) - 261.6256) < 0.01);
+  assert.ok(Math.abs(noteFrequency("C", 3) - 130.8128) < 0.01);
+  const chord = majorChordFrequencies(noteFrequency("C", 3));
+  assert.equal(chord.length, 4);
+  assert.ok(chord[1] / chord[0] > 1.2 && chord[1] / chord[0] < 1.3);
+  assert.ok(chord[3] / chord[0] > 1.9 && chord[3] / chord[0] < 2.1);
+  assert.equal(hydrate({}).source, "test");
+  assert.equal(hydrate({ source: "guitar" }).source, "guitar");
 });
 
 test("delay time is a capped log sweep and feedback cannot run away", () => {

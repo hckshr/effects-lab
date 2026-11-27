@@ -91,14 +91,50 @@ function highlightPreset() {
   }
 }
 
-function paintSource() {
-  const buttons = document.querySelectorAll("[data-source]");
-  for (let i = 0; i < buttons.length; i++) {
-    const on = buttons[i].dataset.source === state.source;
-    buttons[i].setAttribute("aria-pressed", String(on));
-    buttons[i].classList.toggle("on", on);
+function playerSpec() {
+  return {
+    sound: state.player.sound,
+    note: state.player.note,
+    octave: state.player.octave,
+    repeat: state.player.repeat,
+  };
+}
+
+function paintPlayer() {
+  const player = state.player;
+  const guitar = state.source === "guitar";
+  document.getElementById("player").hidden = guitar;
+  document.getElementById("guitarBox").hidden = !guitar;
+  document.getElementById("useGuitarNow").hidden = !!engine.micStream;
+  document.getElementById("noteReadout").textContent = player.note + player.octave;
+  document.getElementById("octaveDown").disabled = player.octave <= 2;
+  document.getElementById("octaveUp").disabled = player.octave >= 5;
+  const notes = document.querySelectorAll("#notes button");
+  for (let i = 0; i < notes.length; i++) {
+    const on = notes[i].dataset.note === player.note;
+    notes[i].classList.toggle("on", on);
+    notes[i].setAttribute("aria-pressed", String(on));
   }
-  document.getElementById("device").disabled = state.source !== "guitar";
+  const sounds = document.querySelectorAll("#sounds button");
+  for (let i = 0; i < sounds.length; i++) {
+    const on = sounds[i].dataset.sound === player.sound;
+    sounds[i].classList.toggle("on", on);
+    sounds[i].setAttribute("aria-pressed", String(on));
+  }
+  const repeat = document.getElementById("repeat");
+  repeat.classList.toggle("on", player.repeat);
+  repeat.setAttribute("aria-pressed", String(player.repeat));
+  if (engine.repeatSpec) engine.updateRepeat(playerSpec());
+}
+
+function renderPlayer() {
+  document.getElementById("notes").innerHTML = NOTE_NAMES.map((name) =>
+    '<button type="button" data-note="' + name + '">' + name + "</button>"
+  ).join("");
+  document.getElementById("sounds").innerHTML = TEST_SOUNDS.map((id) =>
+    '<button type="button" data-sound="' + id + '">' + TEST_SOUND_LABELS[id] + "</button>"
+  ).join("");
+  paintPlayer();
 }
 
 function chainLabel() {
@@ -256,49 +292,55 @@ function fillDevices(list) {
   sel.value = known ? current : "";
 }
 
-async function toggleStart() {
-  const btn = document.getElementById("start");
-  const live = document.getElementById("live");
-  if (engine.running) {
-    await engine.stop();
-    btn.textContent = "Start";
-    btn.classList.remove("is-on");
-    live.hidden = true;
-    setStatus("Stopped.");
-    meterHold = 0;
-    paintMeter(0);
-    return;
-  }
-  btn.disabled = true;
+let playDownAt = 0;
+let noteHeld = false;
+let pressId = 0;
+
+async function playDown() {
+  const id = ++pressId;
+  noteHeld = true;
+  playDownAt = performance.now();
+  engine.ensureContext();
   try {
-    await engine.start(state);
-    btn.textContent = "Stop";
-    btn.classList.add("is-on");
-    live.hidden = false;
-    setStatus(state.source === "test" ? "Test sound playing." : "Guitar input.");
+    await engine.prepare(state);
+    if (id !== pressId) return;
+    if (state.player.sound === "tone" && !noteHeld) engine.playOnce(playerSpec());
+    else engine.playDown(playerSpec());
+    setStatus("");
   } catch (err) {
-    if (engine.running) {
-      btn.textContent = "Stop";
-      btn.classList.add("is-on");
-      live.hidden = false;
-    }
-    setStatus("Microphone blocked. Switch to Test sound, or allow the mic and try again.");
-  } finally {
-    btn.disabled = false;
+    setStatus("Audio didn't start. Tap Play note again.");
   }
 }
 
-async function setSource(source) {
-  state.source = source;
-  paintSource();
-  scheduleSave();
-  if (!engine.running) return;
+function playUp() {
+  noteHeld = false;
+  if (!engine.tone || state.player.sound !== "tone") return;
+  engine.playUp(playerSpec(), performance.now() - playDownAt);
+}
+
+async function useGuitar() {
+  engine.ensureContext();
   try {
-    await engine.applySource(source, state.deviceId);
-    setStatus(source === "test" ? "Test sound playing." : "Guitar input.");
+    await engine.prepare(state);
+    await engine.useGuitar(state.deviceId);
+    state.source = "guitar";
+    saveNow();
+    paintPlayer();
+    setStatus("Guitar is on.");
   } catch (err) {
-    setStatus("Microphone blocked. You can still use the test sound.");
+    state.source = "test";
+    if (engine.ctx) engine.leaveGuitar();
+    paintPlayer();
+    setStatus("The browser didn't allow the microphone. You can still play notes.");
   }
+}
+
+function showNotes() {
+  state.source = "test";
+  if (engine.ctx) engine.leaveGuitar();
+  paintPlayer();
+  saveNow();
+  setStatus("");
 }
 
 function choosePreset(id) {
@@ -393,29 +435,93 @@ function init() {
   renderBoard();
   renderAdd();
   chainLabel();
-  paintSource();
+  renderPlayer();
   paintFromState();
   fillDevices([]);
 
   engine.onMeter = paintMeter;
-  engine.onDevices = fillDevices;
+  engine.onDevices = (list) => {
+    fillDevices(list);
+    paintPlayer();
+  };
 
-  document.getElementById("start").addEventListener("click", toggleStart);
+  const playNote = document.getElementById("playNote");
+  playNote.addEventListener("pointerdown", (e) => {
+    if (e.button != null && e.button !== 0) return;
+    e.preventDefault();
+    playNote.classList.add("is-down");
+    try { playNote.setPointerCapture(e.pointerId); } catch (err) { /* keyboard */ }
+    playDown();
+  });
+  playNote.addEventListener("pointerup", () => {
+    playNote.classList.remove("is-down");
+    playUp();
+  });
+  playNote.addEventListener("pointercancel", () => {
+    playNote.classList.remove("is-down");
+    playUp();
+  });
+  playNote.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (e.repeat) return;
+    e.preventDefault();
+    playNote.classList.add("is-down");
+    playDown();
+  });
+  playNote.addEventListener("keyup", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    playNote.classList.remove("is-down");
+    playUp();
+  });
+
+  document.getElementById("notes").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-note]");
+    if (!btn) return;
+    state.player.note = btn.dataset.note;
+    paintPlayer();
+    scheduleSave();
+  });
+  document.getElementById("octaveDown").addEventListener("click", () => {
+    state.player.octave = Math.max(2, state.player.octave - 1);
+    paintPlayer();
+    scheduleSave();
+  });
+  document.getElementById("octaveUp").addEventListener("click", () => {
+    state.player.octave = Math.min(5, state.player.octave + 1);
+    paintPlayer();
+    scheduleSave();
+  });
+  document.getElementById("sounds").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-sound]");
+    if (!btn) return;
+    state.player.sound = btn.dataset.sound;
+    engine.stopRepeat();
+    engine.stopTest();
+    paintPlayer();
+    scheduleSave();
+  });
+  document.getElementById("repeat").addEventListener("click", () => {
+    state.player.repeat = !state.player.repeat;
+    if (!state.player.repeat) engine.stopRepeat();
+    paintPlayer();
+    scheduleSave();
+  });
+  document.getElementById("useGuitar").addEventListener("click", useGuitar);
+  document.getElementById("useGuitarNow").addEventListener("click", useGuitar);
+  document.getElementById("playNotes").addEventListener("click", showNotes);
   document.getElementById("presets").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-preset]");
     if (btn) choosePreset(btn.dataset.preset);
   });
-  document.querySelector(".source").addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-source]");
-    if (btn) setSource(btn.dataset.source);
-  });
   document.getElementById("device").addEventListener("change", async (e) => {
     state.deviceId = e.target.value;
     scheduleSave();
-    if (engine.running && state.source === "guitar") {
+    if (state.source === "guitar" && engine.micStream) {
+      engine.ensureContext();
       try {
+        await engine.prepare(state);
         await engine.openMic(state.deviceId);
-        setStatus("Guitar input.");
+        setStatus("Guitar is on.");
       } catch (err) {
         setStatus("Couldn't open that input.");
       }

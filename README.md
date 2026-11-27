@@ -8,9 +8,9 @@ The name on the page comes from `APP_CONFIG.name` in `src/config.js`. Change tha
 
 ## How to use it
 
-1. Tap **Start**. That unlocks audio in the browser.
-2. Leave **Guitar input** selected, or switch to **Test sound** if nothing is plugged in. The test sound is a plucked chord and a short snare, on a loop.
-3. Pick the input if you have more than one. The mic is opened with echo cancellation, noise suppression, and auto gain all off, and with low latency requested, so the guitar stays direct.
+1. Tap **Play note**. You hear a plucked C through the pedals. The microphone stays off.
+2. Pick another note, an octave, and a sound: one pluck, a major chord, a held tone, or the pluck-and-snare loop. **Repeat** plays it again every couple of seconds. Hold **Play note** while Tone is selected to keep the note going.
+3. Tap **Use my guitar** only when you want to play through an input. That is when the page asks for the microphone. Pick the input if you have more than one. Echo cancellation, noise suppression, and auto gain are off, and low latency is requested, so the guitar stays direct.
 4. Wear headphones if you are using the phone mic. Otherwise the speaker feeds back into the mic.
 5. Stomp a pedal on, turn its knobs, and use **More** for the extra controls. **Add** puts a pedal on the board. Drag a pedal by its name, or use the arrows, to change the order. The chain runs into the next pedal, left to right on a wide screen and top to bottom on a phone.
 
@@ -43,6 +43,6 @@ node build.js          # writes index.html and worker.js from src/
 npx wrangler deploy    # publish to Cloudflare Workers
 ```
 
-`npm test` builds and runs the DSP checks. `npm run smoke` loads the page in headless Chrome, starts the test sound, and checks that the console stays quiet.
+`npm test` builds and runs the DSP checks. `npm run smoke` loads the page in headless Chrome, plays a test note without opening the microphone, and checks that the console stays quiet.
 
 The reverb is an 8-delay feedback network in an AudioWorklet (a generated impulse through a ConvolverNode if the worklet cannot load). The other pedals are ordinary Web Audio nodes.

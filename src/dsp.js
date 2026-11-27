@@ -161,6 +161,35 @@ export const PRESETS = [
   },
 ];
 
+export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+export const TEST_SOUNDS = ["pluck", "chord", "tone", "loop"];
+export const TEST_SOUND_LABELS = { pluck: "Pluck", chord: "Chord", tone: "Tone", loop: "Loop" };
+
+export function defaultPlayer() {
+  return { note: "C", octave: 3, sound: "pluck", repeat: false };
+}
+
+export function sanitizePlayer(raw) {
+  const player = defaultPlayer();
+  if (!raw || typeof raw !== "object") return player;
+  if (NOTE_NAMES.includes(raw.note)) player.note = raw.note;
+  const oct = Number(raw.octave);
+  if (Number.isFinite(oct)) player.octave = clamp(Math.round(oct), 2, 5);
+  if (TEST_SOUNDS.includes(raw.sound)) player.sound = raw.sound;
+  player.repeat = !!raw.repeat;
+  return player;
+}
+
+export function noteFrequency(name, octave) {
+  const index = NOTE_NAMES.indexOf(name);
+  const midi = 12 * (octave + 1) + (index < 0 ? 0 : index);
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+export function majorChordFrequencies(rootHz) {
+  return [0, 4, 7, 12].map((semitone) => rootHz * Math.pow(2, semitone / 12));
+}
+
 export function clamp(x, a, b) {
   if (x < a) return a;
   if (x > b) return b;
@@ -416,12 +445,13 @@ export function freshState() {
     };
   }
   return {
-    source: "guitar",
+    source: "test",
     deviceId: "",
     inputGain: 1,
     master: 0.8,
     order: [],
     preset: null,
+    player: defaultPlayer(),
     pedals,
   };
 }
@@ -434,6 +464,7 @@ export function applyPreset(state, presetId) {
   next.deviceId = state.deviceId;
   next.inputGain = state.inputGain;
   next.master = state.master;
+  next.player = Object.assign(defaultPlayer(), state.player);
   next.order = preset.order.slice();
   next.preset = preset.id;
   for (const id of preset.order) {
@@ -464,6 +495,7 @@ export function serialize(state) {
     deviceId: state.deviceId || "",
     inputGain: state.inputGain,
     master: state.master,
+    player: Object.assign(defaultPlayer(), state.player),
     order: state.order.slice(),
     preset: state.preset,
     pedals,
@@ -473,7 +505,8 @@ export function serialize(state) {
 export function hydrate(raw) {
   if (!raw || typeof raw !== "object") return initialState();
   const next = freshState();
-  next.source = raw.source === "test" ? "test" : "guitar";
+  next.source = raw.source === "guitar" ? "guitar" : "test";
+  next.player = sanitizePlayer(raw.player);
   next.deviceId = typeof raw.deviceId === "string" ? raw.deviceId.slice(0, 256) : "";
   const ig = Number(raw.inputGain);
   next.inputGain = Number.isFinite(ig) ? clamp(ig, 0, INPUT_GAIN_MAX) : 1;
