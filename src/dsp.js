@@ -2,9 +2,12 @@
 
 export const PEDAL_IDS = ["drive", "mod", "filter", "delay", "reverb"];
 
-export const MAX_DELAY_FEEDBACK = 0.82;
-export const MAX_FLANGER_FEEDBACK = 0.68;
-export const MAX_PHASER_FEEDBACK = 0.55;
+export const MAX_DELAY_FEEDBACK = 0.7;
+export const MAX_FLANGER_FEEDBACK = 0.55;
+export const MAX_PHASER_FEEDBACK = 0.5;
+export const MAX_STRING_FEEDBACK = 0.78;
+export const STORAGE_VERSION = 2;
+export const DOUBLE_TAP_MS = 320;
 export const INPUT_GAIN_MAX = 3;
 export const DELAY_MIN = 0.04;
 export const DELAY_MAX = 1;
@@ -164,6 +167,20 @@ export const PRESETS = [
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 export const TEST_SOUNDS = ["pluck", "chord", "tone", "loop"];
 export const TEST_SOUND_LABELS = { pluck: "Pluck", chord: "Chord", tone: "Tone", loop: "Loop" };
+
+export function defaultKnobPosition(pedal, param) {
+  if (pedal === "global" && param === "input") return 1 / INPUT_GAIN_MAX;
+  if (pedal === "global" && param === "master") return 0.8;
+  const table = DEFAULT_PARAMS[pedal];
+  if (table && Object.prototype.hasOwnProperty.call(table, param)) return table[param];
+  return 0;
+}
+
+export function isDoubleTap(previousMs, nowMs) {
+  if (!(previousMs > 0) || !(nowMs > 0)) return false;
+  const dt = nowMs - previousMs;
+  return dt >= 40 && dt <= DOUBLE_TAP_MS;
+}
 
 export function defaultPlayer() {
   return { note: "C", octave: 3, sound: "pluck", repeat: false };
@@ -413,6 +430,11 @@ export function makeSafetyCurve() {
   return makeCurve((x) => Math.tanh(x * drive) / norm);
 }
 
+export function makeHardClipCurve() {
+  const limit = 0.95;
+  return makeCurve((x) => (x < -limit ? -limit : x > limit ? limit : x));
+}
+
 export function makeTremCurve() {
   return makeCurve((x) => Math.tanh(x * 5));
 }
@@ -490,7 +512,7 @@ export function serialize(state) {
     pedals[id] = { enabled: !!p.enabled, type: p.type, more: !!p.more, params: Object.assign({}, p.params) };
   }
   return {
-    v: 1,
+    v: STORAGE_VERSION,
     source: state.source,
     deviceId: state.deviceId || "",
     inputGain: state.inputGain,

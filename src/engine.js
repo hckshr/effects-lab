@@ -3,7 +3,7 @@
 
 const SOFT_CURVE = makeSoftCurve();
 const HARD_CURVE = makeHardCurve();
-const CLIP_CURVE = makeSafetyCurve();
+const CLIP_CURVE = makeHardClipCurve();
 const TREM_CURVE = makeTremCurve();
 
 function stereoGain(ctx) {
@@ -99,11 +99,11 @@ function buildFlanger(ctx, head, wetOut, bag) {
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
     lp.frequency.value = 5200;
-    lp.Q.value = 0.7;
+    lp.Q.value = 0.5;
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
     hp.frequency.value = 140;
-    hp.Q.value = 0.7;
+    hp.Q.value = 0.5;
     const fb = ctx.createGain();
     const depth = ctx.createGain();
     (ch === 0 ? lfo : inv).connect(depth);
@@ -301,10 +301,10 @@ function buildDelay(ctx, head, wetOut, bag) {
     delay.delayTime.value = 0.32;
     const lp = ctx.createBiquadFilter();
     lp.type = "lowpass";
-    lp.Q.value = 0.707;
+    lp.Q.value = 0.5;
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass";
-    hp.Q.value = 0.707;
+    hp.Q.value = 0.5;
     const fb = ctx.createGain();
     const depth = ctx.createGain();
     (ch === 0 ? lfo : inv).connect(depth);
@@ -371,6 +371,10 @@ class Engine {
     this.tone = null;
     this.repeatTimer = null;
     this.repeatSpec = null;
+    this.voices = [];
+    this.runaway = false;
+    this.hotSince = 0;
+    this.onRunaway = null;
   }
 
   // Call from the user gesture, before any await, so the browser unlocks audio.
@@ -420,6 +424,7 @@ class Engine {
     this.stopTest();
     this.stopRepeat();
     this.releaseTone(0.05);
+    this.stopVoices();
     this.stopMic();
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.ctx && this.ctx.state === "running") await this.ctx.suspend();
@@ -456,6 +461,15 @@ class Engine {
     this.master = stereoGain(ctx);
     this.master.gain.value = 0.8;
     this.duck.connect(this.master);
+    this.safety = ctx.createGain();
+    this.safety.gain.value = 1;
+    this.dcBlock = ctx.createBiquadFilter();
+    this.dcBlock.type = "highpass";
+    this.dcBlock.frequency.value = 18;
+    this.dcBlock.Q.value = 0.5;
+    this.outAnalyser = ctx.createAnalyser();
+    this.outAnalyser.fftSize = 1024;
+    this.outBuf = new Float32Array(this.outAnalyser.fftSize);
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -2.5;
     comp.knee.value = 3;
@@ -464,8 +478,11 @@ class Engine {
     comp.release.value = 0.1;
     const clip = ctx.createWaveShaper();
     clip.curve = CLIP_CURVE;
-    clip.oversample = "2x";
-    this.master.connect(comp);
+    clip.oversample = "none";
+    this.master.connect(this.safety);
+    this.master.connect(this.outAnalyser);
+    this.safety.connect(this.dcBlock);
+    this.dcBlock.connect(comp);
     comp.connect(clip);
     clip.connect(ctx.destination);
 
@@ -658,7 +675,7 @@ class Engine {
     const fx = this.shells.filter.fx;
     this.liveFilter = pedal;
     const base = mapParam("filter", "freq", p.freq, type);
-    const q = mapParam("filter", "resonance", p.resonance, type);
+    const q = Math.min(type === "wah" ? 5 : 3.2, mapParam("filter", "resonance", p.resonance, type));
     const biquadType = type === "highpass" ? "highpass" : type === "wah" ? "bandpass" : "lowpass";
     for (let i = 0; i < fx.filters.length; i++) {
       if (fx.filters[i].type !== biquadType) fx.filters[i].type = biquadType;
@@ -1080,21 +1097,69 @@ class Engine {
     delay.delayTime.setValueAtTime(Math.min(0.9, period / sr), time);
     const filter = ctx.createBiquadFilter();
     filter.type = "lowpass";
-    filter.frequency.setValueAtTime(1700 + velocity * 3000, time);
+    filter.Q.setValueAtTime(0.5, time);
+    filter.frequency.setValueAtTime(2200, time);
     const fb = ctx.createGain();
-    fb.gain.setValueAtTime(freq < 140 ? 0.962 : 0.944, time);
+    // Q=1 (the biquad default) peaks above unity, so the old 0.96 feedback
+    // made this loop gain about 1.11 and the note grew without bound.
+    fb.gain.setValueAtTime(MAX_STRING_FEEDBACK, time);
     const out = ctx.createGain();
-    out.gain.setValueAtTime(Math.max(0.0002, velocity), time);
-    out.gain.exponentialRampToValueAtTime(0.0001, time + 2.15);
+    const level = Math.max(0.0002, Math.min(0.45, velocity));
+    out.gain.setValueAtTime(level, time);
+    out.gain.exponentialRampToValueAtTime(0.0001, time + 2.4);
+    const limit = ctx.createWaveShaper();
+    limit.curve = CLIP_CURVE;
     src.connect(delay);
     delay.connect(filter);
     filter.connect(fb);
     fb.connect(delay);
     filter.connect(out);
-    out.connect(this.testGain);
+    out.connect(limit);
+    limit.connect(this.testGain);
     src.start(time);
     src.stop(time + 0.04);
-    this.collect(time + 2.35, [src, delay, filter, fb, out]);
+    const nodes = [src, delay, filter, fb, out, limit];
+    this.trackVoice(nodes);
+    this.collect(time + 2.6, nodes);
+  }
+
+  trackVoice(nodes) {
+    this.voices.push(nodes);
+    while (this.voices.length > 8) this.dropVoice(this.voices.shift());
+  }
+
+  dropVoice(nodes) {
+    if (!nodes) return;
+    for (let i = 0; i < nodes.length; i++) {
+      try { nodes[i].disconnect(); } catch (err) { /* already gone */ }
+    }
+  }
+
+  stopVoices() {
+    while (this.voices.length) this.dropVoice(this.voices.shift());
+  }
+
+  muteRunaway() {
+    if (this.runaway || !this.ctx || !this.safety) return;
+    this.runaway = true;
+    this.hotSince = 0;
+    this.safety.gain.cancelScheduledValues(this.ctx.currentTime);
+    this.safety.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.stopVoices();
+    this.releaseTone(0.01);
+    this.stopTest();
+    this.stopRepeat();
+    const node = this.shells.reverb && this.shells.reverb.fx && this.shells.reverb.fx.node;
+    if (node && node.port) node.port.postMessage("clear");
+    if (this.onRunaway) this.onRunaway(true);
+  }
+
+  unmute() {
+    if (!this.runaway || !this.ctx || !this.safety) return;
+    this.runaway = false;
+    this.hotSince = 0;
+    this.safety.gain.setValueAtTime(1, this.ctx.currentTime);
+    if (this.onRunaway) this.onRunaway(false);
   }
 
   snare(time) {
@@ -1171,9 +1236,75 @@ class Engine {
       approach(this.ctx, fx.filters[0].frequency, base + add, 0.02);
       approach(this.ctx, fx.filters[1].frequency, base + add, 0.02);
     }
+    if (this.outAnalyser && !this.runaway) {
+      this.outAnalyser.getFloatTimeDomainData(this.outBuf);
+      let outPeak = 0;
+      const watch = this.outBuf;
+      for (let i = 0; i < watch.length; i++) {
+        const x = watch[i];
+        if (!Number.isFinite(x)) { outPeak = 2; break; }
+        const a = x < 0 ? -x : x;
+        if (a > outPeak) outPeak = a;
+      }
+      const nowMs = typeof performance !== "undefined" ? performance.now() : 0;
+      if (outPeak >= 0.95) {
+        if (!this.hotSince) this.hotSince = nowMs;
+        else if (nowMs - this.hotSince >= 500) this.muteRunaway();
+      } else this.hotSince = 0;
+    }
     if (this.onMeter) this.onMeter(this.displayPeak || rms);
     this.raf = requestAnimationFrame(() => this.tick());
   }
+}
+
+function previewStats(buffer) {
+  const sr = buffer.sampleRate;
+  const n = buffer.length;
+  const left = buffer.getChannelData(0);
+  const right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : null;
+  let peak = 0;
+  let nans = 0;
+  for (let i = 0; i < n; i++) {
+    const a = left[i];
+    const b = right ? right[i] : 0;
+    if (!Number.isFinite(a) || (right && !Number.isFinite(b))) nans++;
+    else {
+      const aa = a < 0 ? -a : a;
+      const bb = b < 0 ? -b : b;
+      if (aa > peak) peak = aa;
+      if (bb > peak) peak = bb;
+    }
+  }
+  const tailFrom = Math.max(0, n - Math.floor(sr * 0.5));
+  let tail = 0;
+  for (let i = tailFrom; i < n; i++) {
+    const a = left[i];
+    const b = right ? right[i] : 0;
+    const aa = a < 0 ? -a : a;
+    const bb = b < 0 ? -b : b;
+    if (aa > tail) tail = aa;
+    if (bb > tail) tail = bb;
+  }
+  return { peak, tail, nans };
+}
+
+async function renderPreview(state, taps) {
+  const sr = 48000;
+  const seconds = 6;
+  const ctx = new OfflineAudioContext(2, Math.ceil(sr * seconds), sr);
+  const eng = new Engine();
+  eng.ctx = ctx;
+  await eng.loadWorklet();
+  eng.build();
+  eng.order = state.order.slice();
+  eng.reconnectNow();
+  eng.sync(state, false);
+  eng.testGain.gain.setValueAtTime(0.9, 0);
+  const count = taps > 0 ? taps : 1;
+  const freq = noteFrequency(state.player.note, state.player.octave);
+  for (let i = 0; i < count; i++) eng.pluck(0.08 + i * 0.12, freq, 0.28);
+  const buffer = await ctx.startRendering();
+  return previewStats(buffer);
 }
 
 const engine = new Engine();

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  DOUBLE_TAP_MS,
   MAX_DELAY_FEEDBACK,
   MAX_FLANGER_FEEDBACK,
   MAX_PHASER_FEEDBACK,
@@ -11,7 +12,9 @@ import {
   blendGains,
   chainText,
   clamp01,
+  defaultKnobPosition,
   driveMakeup,
+  isDoubleTap,
   formatGainDb,
   freshState,
   hydrate,
@@ -35,6 +38,22 @@ import { loopGainForDelay, MAX_REVERB_LOOP, fillDelaySamples } from "../src/reve
 
 test("storage key follows the display name", () => {
   assert.equal(storageKeyFor("Effects Lab"), "effects-lab:v1");
+});
+
+test("double-tap timing and knob defaults", () => {
+  assert.equal(isDoubleTap(0, 100), false);
+  assert.equal(isDoubleTap(1000, 1200), true);
+  assert.equal(isDoubleTap(1000, 1000 + DOUBLE_TAP_MS + 5), false);
+  assert.ok(Math.abs(defaultKnobPosition("global", "input") * 3 - 1) < 1e-9);
+  assert.equal(defaultKnobPosition("global", "master"), 0.8);
+  assert.equal(defaultKnobPosition("reverb", "decay"), 0.4);
+  const saved = serialize(initialState());
+  assert.equal(saved.v, 2);
+  saved.pedals.delay.params.feedback = 4;
+  saved.inputGain = 99;
+  const back = hydrate(saved);
+  assert.ok(back.pedals.delay.params.feedback <= 1);
+  assert.ok(back.inputGain <= 3);
 });
 
 test("first load is the test note, not the microphone", () => {
@@ -66,7 +85,8 @@ test("delay time is a capped log sweep and feedback cannot run away", () => {
     prev = time;
   }
   assert.ok(mapParam("delay", "feedback", 1) <= MAX_DELAY_FEEDBACK);
-  assert.ok(mapParam("delay", "feedback", 1) > 0.8);
+  assert.ok(mapParam("delay", "feedback", 1) > 0.6);
+  assert.ok(mapParam("delay", "feedback", 1) < 0.9);
   assert.ok(mapParam("mod", "color", 1, "flanger") <= MAX_FLANGER_FEEDBACK);
   assert.ok(mapParam("mod", "color", 1, "phaser") <= MAX_PHASER_FEEDBACK);
   assert.ok(Math.abs(knobFromDelaySeconds(mapParam("delay", "time", 0.42)) - 0.42) < 1e-6);
