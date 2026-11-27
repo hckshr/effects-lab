@@ -64,27 +64,23 @@ try {
 
   const input = page.locator("#inputSlot .knob");
   await input.scrollIntoViewIfNeeded();
-  assert.equal(await input.evaluate((el) => getComputedStyle(el).touchAction), "manipulation");
-  const box = await input.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + 24);
-  await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2, box.y + 110, { steps: 6 });
-  await page.mouse.up();
+  const plus = input.locator('[data-step="1"]');
+  const plusBox = await plus.boundingBox();
+  assert.ok(plusBox.height >= 44, "plus is " + plusBox.height);
+  assert.equal(await plus.evaluate((el) => getComputedStyle(el).touchAction), "manipulation");
+  const before = await page.evaluate(() => window.__lab.state.inputGain);
+  await plus.click();
   const moved = await page.evaluate(() => window.__lab.state.inputGain);
-  assert.ok(Math.abs(moved - 1) > 0.05, "drag did not change input gain (" + moved + ")");
-  await input.dblclick();
+  assert.ok(moved > before + 0.05, "plus did not raise input gain (" + moved + ")");
+  await input.locator('[data-step="0"]').click();
   await page.waitForFunction(() => Math.abs(window.__lab.state.inputGain - 1) < 0.001);
   assert.match(await input.locator(".knob-value").innerText(), /0\.0 dB/);
   assert.equal(await input.evaluate((el) => el.classList.contains("flash")), true);
 
   const decay = page.locator('.pedal[data-id="reverb"] [data-param="decay"]');
   await decay.scrollIntoViewIfNeeded();
-  const decayBox = await decay.boundingBox();
-  await page.mouse.move(decayBox.x + decayBox.width / 2, decayBox.y + 20);
-  await page.mouse.down();
-  await page.mouse.move(decayBox.x + decayBox.width / 2, decayBox.y + 90, { steps: 6 });
-  await page.mouse.up();
-  await decay.dblclick();
+  await decay.locator('[data-step="1"]').click();
+  await decay.locator('[data-step="0"]').click();
   const decayDefault = await page.evaluate(() => window.__lab.defaultKnob("reverb", "decay"));
   await page.waitForFunction((value) => Math.abs(window.__lab.state.pedals.reverb.params.decay - value) < 0.001, decayDefault);
   assert.equal(await decay.evaluate((el) => el.classList.contains("flash")), true);

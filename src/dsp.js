@@ -185,6 +185,27 @@ export function defaultKnobPosition(pedal, param) {
   return 0;
 }
 
+// Position step for one tap. About 20 taps covers the whole range.
+export function knobStep(pedal, param) {
+  if (pedal === "global" && param === "input") return 0.04;
+  if (pedal === "delay" && param === "time") return 0.04;
+  return 0.05;
+}
+
+export function knobNudge(position, pedal, param, direction, repeatIndex) {
+  const ticks = repeatIndex > 0 ? repeatIndex : 0;
+  const mult = ticks < 4 ? 1 : ticks < 10 ? 2 : 4;
+  const dir = direction < 0 ? -1 : 1;
+  return clamp01((Number.isFinite(position) ? position : 0) + dir * knobStep(pedal, param) * mult);
+}
+
+export function knobRepeatDelay(index) {
+  let delay = 380;
+  const n = index > 0 ? index : 0;
+  for (let i = 0; i < n; i++) delay = Math.max(45, delay * 0.82);
+  return delay;
+}
+
 export function isDoubleTap(previousMs, nowMs) {
   if (!(previousMs > 0) || !(nowMs > 0)) return false;
   const dt = nowMs - previousMs;

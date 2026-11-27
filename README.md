@@ -1,6 +1,6 @@
 # Effects Lab
 
-A guitar pedalboard that runs in the browser. Play a built-in loop, or record a short take, and hear drive, modulation, filter, delay, and reverb while you turn the knobs. The microphone is never monitored live.
+A guitar pedalboard that runs in the browser. Play a built-in loop, or record a short take, and hear drive, modulation, filter, delay, and reverb while you nudge the controls. The microphone is never monitored live.
 
 **Try it:** [effects-lab.hckshr.workers.dev](https://effects-lab.hckshr.workers.dev/)
 
@@ -8,7 +8,7 @@ The name on the page comes from `APP_CONFIG.name` in `src/config.js`. Change tha
 
 ## How to use it
 
-1. Open the **Loop library** and tap **Play** on a loop. Loop is on, so it repeats while you turn knobs. The microphone stays off. Double-tap a knob to put it back to its default (Input returns to 0 dB).
+1. Open the **Loop library** and tap **Play** on a loop. Loop is on, so it repeats while you change the sound. The microphone stays off. Each control is **−**, **+**, and **=**. **=** puts it back to its default (Input returns to 0 dB). Hold **−** or **+** and it keeps moving, faster the longer you hold.
 2. **Test notes** is in the library if you want one note, a chord, or a held tone instead of a loop.
 3. Tap **Record** under **Record my guitar**, play, then tap **Stop**. It also stops if you pause, and it never runs past a minute. A short bit of audio before the first note is kept. Nothing is sent to the speakers while you record, so the guitar cannot feed back. After you stop, the take loops through the pedals. Trim the start and end, or tap **Re-record**. The last take is saved on this device.
 4. Stomp a pedal on, turn its knobs, and use **More** for the extra controls. **Add** puts a pedal on the board. Drag a pedal by its name, or use the arrows, to change the order. The chain runs into the next pedal, left to right on a wide screen and top to bottom on a phone.
