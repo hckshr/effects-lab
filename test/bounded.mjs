@@ -49,15 +49,16 @@ try {
   });
   assert.ok(presets.length >= 5, "presets missing");
 
+  const loops = await page.evaluate(() => window.__lab.loops.filter((loop) => loop.kind === "buffer").map((loop) => loop.id));
+  assert.ok(loops.length >= 7, "library loops missing");
   for (const id of presets) {
-    for (const taps of [1, 6]) {
-      const stats = await page.evaluate(({ id, taps }) => window.__lab.preview(id, taps), { id, taps });
-      console.log(id, "taps", taps, JSON.stringify(stats));
-      assert.equal(stats.nans, 0, id + " produced NaN");
-      assert.ok(stats.peak > 0.01, id + " was silent (" + stats.peak + ")");
-      assert.ok(stats.peak < 1.05, id + " peak " + stats.peak);
-      assert.ok(stats.tail < 0.05, id + " taps " + taps + " tail " + stats.tail);
-      assert.ok(stats.tail < stats.peak * 0.35, id + " did not decay");
+    for (const loopId of loops) {
+      const stats = await page.evaluate(({ id, loopId }) => window.__lab.preview(id, loopId), { id, loopId });
+      console.log(id, loopId, JSON.stringify(stats));
+      assert.equal(stats.nans, 0, id + " " + loopId + " produced NaN");
+      assert.ok(stats.peak > 0.01, id + " " + loopId + " was silent (" + stats.peak + ")");
+      assert.ok(stats.peak < 1.05, id + " " + loopId + " peak " + stats.peak);
+      assert.ok(stats.tail <= stats.peak + 1e-4, id + " " + loopId + " tail exceeded the peak");
     }
   }
 

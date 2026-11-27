@@ -75,58 +75,33 @@ try {
   await page.goto(base, { waitUntil: "domcontentloaded" });
   assert.equal(await page.title(), "Effects Lab");
   assert.match(await page.locator("#appTitle").innerText(), /Effects Lab/);
-  assert.match(await page.locator("#tip").innerText(), /headphones/i);
+  assert.match(await page.locator("#tip").innerText(), /mic is only on while you record/i);
   assert.equal(await page.locator("#start").count(), 0);
-  assert.equal(await page.locator("#playNote").innerText(), "Play note");
-  const choices = [
-    ["[data-sound='pluck']", "Single note", "One guitar-like note; hear the reverb/delay tail"],
-    ["[data-sound='chord']", "Chord", "Strummed chord"],
-    ["[data-sound='tone']", "Held note", "Steady note; good for chorus/tremolo"],
-    ["[data-sound='loop']", "Riff", "Repeating note + snare pattern"],
-    ["#repeat", "Auto-replay", "Replays every couple of seconds so you can tweak knobs hands-free"],
-  ];
-  for (const [sel, label, hint] of choices) {
-    const btn = page.locator(sel);
-    assert.equal(await btn.locator(".choice-name").innerText(), label);
-    assert.equal(await btn.locator(".choice-hint").innerText(), hint);
-    assert.equal(await btn.getAttribute("title"), null);
-    const box = await btn.boundingBox();
-    assert.ok(box.height >= 56, sel + " is " + box.height + "px tall");
-    const hintStyle = await btn.locator(".choice-hint").evaluate((el) => {
-      const style = getComputedStyle(el);
-      return { display: style.display, visibility: style.visibility, fontSize: parseFloat(style.fontSize) };
-    });
-    assert.notEqual(hintStyle.display, "none");
-    assert.equal(hintStyle.visibility, "visible");
-    assert.ok(hintStyle.fontSize >= 13, sel + " hint is " + hintStyle.fontSize + "px");
-  }
-  assert.equal(await page.locator("#noteReadout").innerText(), "C3");
-  assert.equal(await page.locator("#player").isVisible(), true);
-  await page.waitForTimeout(300);
+  assert.equal(await page.locator("#useGuitar").count(), 0);
+  assert.match(await page.locator("#library h2").innerText(), /Loop library/);
+  assert.equal(await page.locator("#loopList .loop").count(), 8);
+  const chord = page.locator('[data-loop="chords"]');
+  assert.match(await chord.locator("h3").innerText(), /Clean chords/);
+  assert.match(await chord.locator("p").innerText(), /reverb/i);
+  const play = chord.locator('[data-act="play"]');
+  const box = await play.boundingBox();
+  assert.ok(box.height >= 52, "play button is " + box.height);
   assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
-  const playerShot = path.join(artifacts, "effects_lab_sound_choices_phone.png");
-  await page.locator("#player").screenshot({ path: playerShot });
+  const libraryPath = path.join(artifacts, "effects_lab_library_phone.png");
+  await page.screenshot({ path: libraryPath });
 
-  await page.locator("#playNote").click();
+  await play.click();
   await page.waitForFunction(() => window.__lab && window.__lab.contextState === "running");
   await page.waitForFunction(() => window.__lab.peakMeter > 0.004, null, { timeout: 5000 });
-  await page.waitForFunction(() => Number(document.getElementById("meter").getAttribute("aria-valuenow")) > 12, null, { timeout: 4000 });
   assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
   const mode = await page.evaluate(() => window.__lab.reverbMode);
   assert.ok(mode === "worklet" || mode === "convolver", mode);
-  const phonePath = path.join(artifacts, "effects_lab_note_player_phone.png");
-  await page.screenshot({ path: phonePath, fullPage: true });
 
-  await page.locator('[data-note="E"]').click();
-  await page.locator("#octaveUp").click();
-  await page.locator('[data-sound="chord"]').click();
-  await page.locator("#playNote").click();
-  await page.waitForTimeout(200);
+  await page.locator('[data-loop="notes"] [data-act="play"]').click();
+  await page.locator("#notePlayer").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#playNote").innerText(), "Play note");
+  assert.match(await page.locator('[data-sound="pluck"] .choice-name').innerText(), /Single note/);
   assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
-  assert.equal(await page.locator("#noteReadout").innerText(), "E4");
-
-  await page.locator('[data-sound="pluck"]').click();
-  await page.locator("#playNote").click();
 
   await page.locator('[data-preset="ambient"]').click();
   await page.waitForFunction(() => /Chorus/.test(document.getElementById("chainLabel").textContent)
@@ -144,27 +119,35 @@ try {
   await page.locator('.pedal[data-id="delay"] .nudge[data-dir="-1"]').click();
   await page.waitForFunction(() => document.getElementById("chainLabel").textContent.startsWith("Delay"));
 
-  await page.locator("#useGuitar").click();
-  await page.waitForFunction(() => window.__gumCalls.length > 0);
+  await page.locator("#recordBtn").click();
+  await page.waitForFunction(() => window.__lab.recording && window.__lab.outputConnected === false && window.__gumCalls.length === 1);
   const attempt = await page.evaluate(() => window.__gumCalls[0].audio);
   assert.equal(attempt.echoCancellation, false);
   assert.equal(attempt.noiseSuppression, false);
   assert.equal(attempt.autoGainControl, false);
   assert.equal(attempt.latency, 0);
-  const afterGuitar = await page.evaluate(() => window.__gumCalls.length);
-
-  await page.locator("#playNotes").click();
-  await page.locator("#playNote").click();
-  await page.waitForTimeout(250);
-  assert.equal(await page.evaluate(() => window.__gumCalls.length), afterGuitar);
+  await page.waitForFunction(() => window.__lab.recordedSamples > 0, null, { timeout: 4000 });
+  assert.equal(await page.evaluate(() => window.__lab.outputConnected), false);
+  assert.equal(await page.locator("#stopRecord").isVisible(), true);
+  await page.waitForTimeout(500);
+  await page.locator("#stopRecord").click();
+  await page.waitForFunction(() => !window.__lab.recording && !document.getElementById("takeCard").hidden);
+  assert.equal(await page.evaluate(() => window.__lab.micLive), false);
+  assert.equal(await page.evaluate(() => window.__lab.outputConnected), true);
+  assert.equal(await page.evaluate(() => window.__gumCalls.length), 1);
+  await page.locator("#playTake").click();
+  await page.locator("#takeCard").scrollIntoViewIfNeeded();
+  const takePath = path.join(artifacts, "effects_lab_take_phone.png");
+  await page.screenshot({ path: takePath });
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(() => window.__gumCalls.length), 0);
-  assert.equal(await page.locator("#playNote").isVisible(), true);
+  assert.equal(await page.evaluate(() => window.__lab.recording), false);
+  assert.equal(await page.locator("#takeCard").isVisible(), true);
 
   assert.equal(errors.length, 0, errors.join("\n"));
-  console.log("smoke ok", mode, phonePath);
+  console.log("smoke ok", mode, libraryPath, takePath);
   await browser.close();
   server.close();
 } catch (err) {

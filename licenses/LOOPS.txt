@@ -1,0 +1,23 @@
+Effects Lab loop library
+
+Every loop shipped with Effects Lab is synthesized by src/loops.js when the page
+runs. There are no sampled recordings and no third-party audio files.
+
+That follows the same idea as the licenses/ folder in the sibling project
+https://github.com/hckshr/session-drummer : anything that can be heard is named,
+and its license is written down. These loops are original to this repository.
+
+  Clean chords   plucked chord bed, two bars at 96 BPM
+  Guitar riff    single-note Karplus-Strong line
+  Arpeggio       picked single notes
+  Bass line      simple oscillator bass
+  Drum beat      synthesized kick, snare, and hats
+  Soft keys      detuned sine pad
+  Synth lead     band-limited melody
+
+You can copy, modify, and redistribute them with the app. No attribution to
+an outside sample library is required, because none was used.
+
+A guitar take the user records is their own performance. It stays in
+IndexedDB on their device under the database name "effects-lab-takes" and
+is not uploaded.

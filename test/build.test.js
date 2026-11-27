@@ -22,9 +22,12 @@ test("worker, page, and readme share the Effects Lab identity", () => {
   assert.match(html, /id="appTitle">Effects Lab</);
   assert.match(html, /worklet\.js\?v=/);
   assert.match(html, /echoCancellation/);
+  assert.match(html, /Loop library/);
+  assert.doesNotMatch(html, /Use my guitar/);
   assert.doesNotMatch(html, /Reverb Lab/);
 
   const worker = fs.readFileSync("worker.js", "utf8");
+  assert.match(worker, /input-record/);
   assert.match(worker, /reverb-fdn/);
   assert.match(worker, /envelope-follow/);
   assert.match(worker, /Effects Lab/);

@@ -93,5 +93,37 @@ class EnvelopeProcessor extends AudioWorkletProcessor {
   }
 }
 
+class RecordProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.hold = [];
+    this.holdN = 0;
+    this.hop = Math.max(128, Math.round(sampleRate * 0.02));
+  }
+
+  process(inputs, outputs) {
+    const out = outputs[0] && outputs[0][0];
+    if (out) out.fill(0);
+    const ch = inputs[0] && inputs[0][0];
+    if (ch && ch.length) {
+      this.hold.push(new Float32Array(ch));
+      this.holdN += ch.length;
+      if (this.holdN >= this.hop) {
+        const frame = new Float32Array(this.holdN);
+        let at = 0;
+        for (let i = 0; i < this.hold.length; i++) {
+          frame.set(this.hold[i], at);
+          at += this.hold[i].length;
+        }
+        this.hold = [];
+        this.holdN = 0;
+        this.port.postMessage(frame);
+      }
+    }
+    return true;
+  }
+}
+
 registerProcessor("reverb-fdn", ReverbProcessor);
 registerProcessor("envelope-follow", EnvelopeProcessor);
+registerProcessor("input-record", RecordProcessor);

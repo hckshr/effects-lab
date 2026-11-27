@@ -375,6 +375,15 @@ class Engine {
     this.runaway = false;
     this.hotSince = 0;
     this.onRunaway = null;
+    this.outputConnected = false;
+    this.recording = false;
+    this.recordGen = 0;
+    this.playingId = null;
+    this.recorder = null;
+    this.recordLevel = 0;
+    this.onTake = null;
+    this.onRecordState = null;
+    this.loopCache = {};
   }
 
   // Call from the user gesture, before any await, so the browser unlocks audio.
@@ -403,20 +412,192 @@ class Engine {
     approach(this.ctx, this.testGain.gain, 0.9, 0.015);
   }
 
-  async useGuitar(deviceId) {
-    this.stopTest();
-    this.stopRepeat();
-    this.releaseTone(0.05);
-    approach(this.ctx, this.testGain.gain, 0, 0.02);
-    await this.openMic(deviceId);
-    approach(this.ctx, this.micGain.gain, 1, 0.03);
+  setSpeakers(on) {
+    if (!this.clip || !this.ctx) return;
+    try { this.clip.disconnect(); } catch (err) { /* already */ }
+    this.outputConnected = false;
+    if (on && !this.recording) {
+      this.clip.connect(this.ctx.destination);
+      this.outputConnected = true;
+    }
   }
 
-  leaveGuitar() {
+  stopPlayback() {
+    const src = this.playSrc;
+    this.playSrc = null;
+    this.playingId = null;
+    if (!src) return;
+    try { src.onended = null; } catch (err) { /* already */ }
+    try { src.stop(); } catch (err) { /* already */ }
+    try { src.disconnect(); } catch (err) { /* already */ }
+  }
+
+  playBuffer(buffer, opts) {
+    if (!this.ctx || !buffer) return;
+    this.stopRepeat();
+    this.stopTest();
+    this.releaseTone(0.03);
+    this.stopVoices();
+    this.stopPlayback();
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const loop = !opts || opts.loop !== false;
+    const offset = opts && opts.offset > 0 ? opts.offset : 0;
+    const end = opts && opts.duration > 0 ? Math.min(buffer.duration, offset + opts.duration) : buffer.duration;
+    src.loop = loop;
+    if (loop) {
+      src.loopStart = offset;
+      src.loopEnd = Math.max(offset + 0.01, end);
+    }
+    src.connect(this.testGain);
+    const when = this.ctx.currentTime + 0.01;
+    if (loop) src.start(when, offset);
+    else src.start(when, offset, Math.max(0.01, end - offset));
+    this.playSrc = src;
+    this.playingId = opts && opts.id ? opts.id : "buffer";
+    src.onended = () => {
+      if (this.playSrc !== src) return;
+      this.playSrc = null;
+      this.playingId = null;
+      if (this.onPlayEnd) this.onPlayEnd();
+    };
+  }
+
+  libraryBuffer(id) {
+    const sr = this.ctx.sampleRate;
+    const key = id + ":" + sr;
+    if (!this.loopCache[key]) {
+      const samples = renderLoop(id, sr);
+      const buffer = this.ctx.createBuffer(1, samples.length, sr);
+      buffer.copyToChannel(samples, 0);
+      this.loopCache[key] = buffer;
+    }
+    return this.loopCache[key];
+  }
+
+  bufferFromSamples(samples, sampleRate) {
+    const sr = this.ctx.sampleRate;
+    const data = sampleRate && sampleRate !== sr ? resampleLinear(samples, sampleRate, sr) : samples;
+    const buffer = this.ctx.createBuffer(1, data.length, sr);
+    buffer.copyToChannel(data, 0);
+    return buffer;
+  }
+
+  async beginRecord() {
+    this.stopPlayback();
+    this.stopRepeat();
+    this.stopTest();
+    this.releaseTone(0.02);
+    this.stopVoices();
+    this.ensureContext();
+    if (this.ctx.state === "suspended") await this.ctx.resume();
+    this.recording = true;
+    if (!this.built) {
+      await this.loadWorklet();
+      this.build();
+      this.built = true;
+      this.running = true;
+      if (!this.raf) this.tick();
+    }
+    this.recording = true;
+    this.recordGen += 1;
+    const gen = this.recordGen;
+    this.setSpeakers(false);
+    approach(this.ctx, this.testGain.gain, 0, 0.01);
+    if (this.onRecordState) this.onRecordState(true);
+    let stream;
+    try {
+      stream = await this.requestMic();
+    } catch (err) {
+      if (this.recordGen === gen) this.cancelRecord();
+      throw err;
+    }
+    if (this.recordGen !== gen || !this.recording) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.micStream = stream;
+    this.micNode = this.ctx.createMediaStreamSource(stream);
+    this.recorder = createTakeRecorder(this.ctx.sampleRate);
+    this.recordLevel = 0;
+    // Pull the recorder through a media-stream sink, never the speakers.
+    this.recordSink = this.ctx.createMediaStreamDestination();
+    const onFrame = (frame) => {
+      if (!this.recording || !this.recorder) return;
+      const reason = this.recorder.push(frame);
+      this.recordLevel = this.recorder.level;
+      if (reason) this.finishRecord(reason);
+    };
+    let usedWorklet = false;
+    if (this.workletOk) {
+      try {
+        this.recNode = new AudioWorkletNode(this.ctx, "input-record", {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          outputChannelCount: [1],
+          channelCount: 1,
+        });
+        this.recNode.port.onmessage = (event) => onFrame(event.data);
+        usedWorklet = true;
+      } catch (err) {
+        this.recNode = null;
+      }
+    }
+    if (!usedWorklet) {
+      this.recNode = this.ctx.createScriptProcessor(2048, 1, 1);
+      this.recNode.onaudioprocess = (event) => {
+        onFrame(event.inputBuffer.getChannelData(0));
+        event.outputBuffer.getChannelData(0).fill(0);
+      };
+    }
+    this.micNode.connect(this.recNode);
+    this.recNode.connect(this.recordSink);
+  }
+
+  cancelRecord() {
+    this.recording = false;
+    this.recordLevel = 0;
+    this.teardownRecordGraph();
+    this.setSpeakers(true);
+    if (this.ctx && this.testGain) approach(this.ctx, this.testGain.gain, 0.9, 0.02);
+    if (this.onRecordState) this.onRecordState(false);
+  }
+
+  finishRecord(reason) {
+    if (!this.recording) return;
+    this.recording = false;
+    const take = this.recorder ? this.recorder.finish(reason) : null;
+    this.recordLevel = 0;
+    this.teardownRecordGraph();
+    this.setSpeakers(true);
+    if (this.ctx && this.testGain) approach(this.ctx, this.testGain.gain, 0.9, 0.03);
+    if (this.onRecordState) this.onRecordState(false);
+    if (take && this.onTake) this.onTake(take);
+  }
+
+  stopRecord() {
+    if (!this.recording) return;
+    if (!this.recorder) {
+      this.recordGen += 1;
+      this.cancelRecord();
+      return;
+    }
+    this.finishRecord("tap");
+  }
+
+  teardownRecordGraph() {
+    if (this.recNode) {
+      try { this.recNode.disconnect(); } catch (err) { /* already */ }
+      if (this.recNode.port) this.recNode.port.onmessage = null;
+      this.recNode.onaudioprocess = null;
+      this.recNode = null;
+    }
+    if (this.recordSink) {
+      try { this.recordSink.disconnect(); } catch (err) { /* already */ }
+      this.recordSink = null;
+    }
+    this.recorder = null;
     this.stopMic();
-    if (!this.ctx || !this.micGain) return;
-    approach(this.ctx, this.micGain.gain, 0, 0.02);
-    approach(this.ctx, this.testGain.gain, 0.9, 0.02);
   }
 
   async stop() {
@@ -425,6 +606,8 @@ class Engine {
     this.stopRepeat();
     this.releaseTone(0.05);
     this.stopVoices();
+    this.stopPlayback();
+    if (this.recording) this.stopRecord();
     this.stopMic();
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.ctx && this.ctx.state === "running") await this.ctx.suspend();
@@ -444,11 +627,8 @@ class Engine {
   build() {
     const ctx = this.ctx;
     this.inputGain = stereoGain(ctx);
-    this.micGain = ctx.createGain();
     this.testGain = ctx.createGain();
-    this.micGain.gain.value = 0;
     this.testGain.gain.value = 0;
-    this.micGain.connect(this.inputGain);
     this.testGain.connect(this.inputGain);
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 1024;
@@ -484,7 +664,8 @@ class Engine {
     this.safety.connect(this.dcBlock);
     this.dcBlock.connect(comp);
     comp.connect(clip);
-    clip.connect(ctx.destination);
+    this.clip = clip;
+    this.setSpeakers(true);
 
     this.shells.drive = makeShell(ctx, "replace");
     this.shells.drive.fx = buildDrive(ctx, this.shells.drive.head, this.shells.drive.wetOut, this.shells.drive.bag);
@@ -853,31 +1034,6 @@ class Engine {
     prev.connect(this.duck);
   }
 
-  async applySource(source, deviceId) {
-    if (source !== "guitar") {
-      this.leaveGuitar();
-      return;
-    }
-    await this.useGuitar(deviceId);
-  }
-
-  async openMic(deviceId) {
-    const stream = await this.requestMic(deviceId);
-    if (this.micNode) {
-      try { this.micNode.disconnect(); } catch (err) { /* already */ }
-    }
-    if (this.micStream) this.micStream.getTracks().forEach((t) => t.stop());
-    this.micStream = stream;
-    this.micNode = this.ctx.createMediaStreamSource(stream);
-    this.micNode.connect(this.micGain);
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices && this.onDevices) {
-      try {
-        const all = await navigator.mediaDevices.enumerateDevices();
-        this.onDevices(all.filter((d) => d.kind === "audioinput"));
-      } catch (err) { /* labels can wait */ }
-    }
-  }
-
   async requestMic(deviceId) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("This browser has no microphone input.");
@@ -964,6 +1120,7 @@ class Engine {
   }
 
   playDown(spec) {
+    this.stopPlayback();
     this.stopRepeat();
     if (spec.sound === "tone") {
       this.stopTest();
@@ -1214,6 +1371,11 @@ class Engine {
 
   tick() {
     if (!this.running || !this.analyser) return;
+    if (this.recording) {
+      if (this.onMeter) this.onMeter(this.recordLevel || 0);
+      this.raf = requestAnimationFrame(() => this.tick());
+      return;
+    }
     this.analyser.getFloatTimeDomainData(this.buf);
     let s = 0;
     let peak = 0;
@@ -1288,9 +1450,11 @@ function previewStats(buffer) {
   return { peak, tail, nans };
 }
 
-async function renderPreview(state, taps) {
+async function renderPreview(state, loopId) {
   const sr = 48000;
-  const seconds = 6;
+  const id = loopId || "chords";
+  const samples = renderLoop(id, sr);
+  const seconds = samples.length / sr + 0.35;
   const ctx = new OfflineAudioContext(2, Math.ceil(sr * seconds), sr);
   const eng = new Engine();
   eng.ctx = ctx;
@@ -1300,11 +1464,11 @@ async function renderPreview(state, taps) {
   eng.reconnectNow();
   eng.sync(state, false);
   eng.testGain.gain.setValueAtTime(0.9, 0);
-  const count = taps > 0 ? taps : 1;
-  const freq = noteFrequency(state.player.note, state.player.octave);
-  for (let i = 0; i < count; i++) eng.pluck(0.08 + i * 0.12, freq, 0.28);
-  const buffer = await ctx.startRendering();
-  return previewStats(buffer);
+  const buffer = ctx.createBuffer(1, samples.length, sr);
+  buffer.copyToChannel(samples, 0);
+  eng.playBuffer(buffer, { loop: true, id });
+  const rendered = await ctx.startRendering();
+  return previewStats(rendered);
 }
 
 const engine = new Engine();
