@@ -62,6 +62,7 @@ try {
   }
 
   const input = page.locator("#inputSlot .knob");
+  await input.scrollIntoViewIfNeeded();
   assert.equal(await input.evaluate((el) => getComputedStyle(el).touchAction), "manipulation");
   const box = await input.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + 24);
@@ -76,6 +77,7 @@ try {
   assert.equal(await input.evaluate((el) => el.classList.contains("flash")), true);
 
   const decay = page.locator('.pedal[data-id="reverb"] [data-param="decay"]');
+  await decay.scrollIntoViewIfNeeded();
   const decayBox = await decay.boundingBox();
   await page.mouse.move(decayBox.x + decayBox.width / 2, decayBox.y + 20);
   await page.mouse.down();

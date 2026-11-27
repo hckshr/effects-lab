@@ -166,7 +166,16 @@ export const PRESETS = [
 
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 export const TEST_SOUNDS = ["pluck", "chord", "tone", "loop"];
-export const TEST_SOUND_LABELS = { pluck: "Pluck", chord: "Chord", tone: "Tone", loop: "Loop" };
+export const TEST_SOUND_COPY = {
+  pluck: { label: "Single note", hint: "One guitar-like note; hear the reverb/delay tail" },
+  chord: { label: "Chord", hint: "Strummed chord" },
+  tone: { label: "Held note", hint: "Steady note; good for chorus/tremolo" },
+  loop: { label: "Riff", hint: "Repeating note + snare pattern" },
+};
+export const REPEAT_COPY = {
+  label: "Auto-replay",
+  hint: "Replays every couple of seconds so you can tweak knobs hands-free",
+};
 
 export function defaultKnobPosition(pedal, param) {
   if (pedal === "global" && param === "input") return 1 / INPUT_GAIN_MAX;

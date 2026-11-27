@@ -117,13 +117,44 @@ h1 {
 }
 
 .notes { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 8px; }
-.sounds { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 10px; }
+.sounds { grid-template-columns: 1fr; gap: 8px; margin-top: 10px; }
 
 .notes button, .sounds button, #repeat, .quiet {
   min-height: 44px;
   border-radius: 10px;
   border: 1px solid rgba(243, 234, 215, 0.16);
   background: #1a1815;
+}
+
+.sounds button, #repeat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 14px;
+  text-align: left;
+  line-height: 1.25;
+  touch-action: manipulation;
+}
+
+.choice-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.choice-hint {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 450;
+  color: var(--muted);
+}
+
+.sounds button.on .choice-hint,
+#repeat.on .choice-hint {
+  color: #4e4338;
 }
 
 .notes button { font-size: 0.85rem; padding: 0; }
@@ -579,7 +610,7 @@ select:disabled { opacity: 0.45; }
             </div>
             <div id="notes" class="notes" role="group" aria-label="Note"></div>
             <div id="sounds" class="sounds" role="group" aria-label="Sound"></div>
-            <button type="button" id="repeat" aria-pressed="false">Repeat</button>
+            <button type="button" id="repeat" aria-pressed="false"></button>
             <button type="button" id="useGuitar" class="quiet">Use my guitar</button>
           </div>
           <div id="guitarBox" hidden>
@@ -790,7 +821,16 @@ export const PRESETS = [
 
 export const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 export const TEST_SOUNDS = ["pluck", "chord", "tone", "loop"];
-export const TEST_SOUND_LABELS = { pluck: "Pluck", chord: "Chord", tone: "Tone", loop: "Loop" };
+export const TEST_SOUND_COPY = {
+  pluck: { label: "Single note", hint: "One guitar-like note; hear the reverb/delay tail" },
+  chord: { label: "Chord", hint: "Strummed chord" },
+  tone: { label: "Held note", hint: "Steady note; good for chorus/tremolo" },
+  loop: { label: "Riff", hint: "Repeating note + snare pattern" },
+};
+export const REPEAT_COPY = {
+  label: "Auto-replay",
+  hint: "Replays every couple of seconds so you can tweak knobs hands-free",
+};
 
 export function defaultKnobPosition(pedal, param) {
   if (pedal === "global" && param === "input") return 1 / INPUT_GAIN_MAX;
@@ -2987,9 +3027,15 @@ function renderPlayer() {
     '<button type="button" data-note="' + name + '">' + name + "</button>"
   ).join("");
   document.getElementById("sounds").innerHTML = TEST_SOUNDS.map((id) =>
-    '<button type="button" data-sound="' + id + '">' + TEST_SOUND_LABELS[id] + "</button>"
+    '<button type="button" data-sound="' + id + '">' + choiceInner(TEST_SOUND_COPY[id]) + "</button>"
   ).join("");
+  document.getElementById("repeat").innerHTML = choiceInner(REPEAT_COPY);
   paintPlayer();
+}
+
+function choiceInner(copy) {
+  return '<span class="choice-name">' + esc(copy.label) + "</span>"
+    + '<span class="choice-hint">' + esc(copy.hint) + "</span>";
 }
 
 function chainLabel() {

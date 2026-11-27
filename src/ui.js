@@ -132,9 +132,15 @@ function renderPlayer() {
     '<button type="button" data-note="' + name + '">' + name + "</button>"
   ).join("");
   document.getElementById("sounds").innerHTML = TEST_SOUNDS.map((id) =>
-    '<button type="button" data-sound="' + id + '">' + TEST_SOUND_LABELS[id] + "</button>"
+    '<button type="button" data-sound="' + id + '">' + choiceInner(TEST_SOUND_COPY[id]) + "</button>"
   ).join("");
+  document.getElementById("repeat").innerHTML = choiceInner(REPEAT_COPY);
   paintPlayer();
+}
+
+function choiceInner(copy) {
+  return '<span class="choice-name">' + esc(copy.label) + "</span>"
+    + '<span class="choice-hint">' + esc(copy.hint) + "</span>";
 }
 
 function chainLabel() {
