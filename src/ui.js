@@ -100,12 +100,25 @@ function playerSpec() {
   };
 }
 
+let nowPlaying = "";
+let noteOpen = false;
+let currentTake = null;
+
+function looping(id) {
+  if (!state.looping || state.looping[id] === undefined) return true;
+  return !!state.looping[id];
+}
+
+function clock(seconds) {
+  const s = Math.max(0, Number(seconds) || 0);
+  if (s < 60) return s.toFixed(1) + "s";
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + (r < 10 ? "0" : "") + r;
+}
+
 function paintPlayer() {
   const player = state.player;
-  const guitar = state.source === "guitar";
-  document.getElementById("player").hidden = guitar;
-  document.getElementById("guitarBox").hidden = !guitar;
-  document.getElementById("useGuitarNow").hidden = !!engine.micStream;
   document.getElementById("noteReadout").textContent = player.note + player.octave;
   document.getElementById("octaveDown").disabled = player.octave <= 2;
   document.getElementById("octaveUp").disabled = player.octave >= 5;
@@ -125,6 +138,7 @@ function paintPlayer() {
   repeat.classList.toggle("on", player.repeat);
   repeat.setAttribute("aria-pressed", String(player.repeat));
   if (engine.repeatSpec) engine.updateRepeat(playerSpec());
+  paintLibrary();
 }
 
 function renderPlayer() {
@@ -136,6 +150,63 @@ function renderPlayer() {
   ).join("");
   document.getElementById("repeat").innerHTML = choiceInner(REPEAT_COPY);
   paintPlayer();
+}
+
+function renderLibrary() {
+  document.getElementById("loopList").innerHTML = LOOPS.map((loop) =>
+    '<article class="loop" data-loop="' + loop.id + '">'
+    + "<h3>" + esc(loop.name) + "</h3>"
+    + "<p>" + esc(loop.hint) + "</p>"
+    + '<div class="loop-actions">'
+    + '<button type="button" data-act="play">Play</button>'
+    + '<button type="button" data-act="stop">Stop</button>'
+    + '<button type="button" data-act="loop" aria-pressed="true">Loop on</button>'
+    + "</div></article>"
+  ).join("");
+  renderPlayer();
+}
+
+function paintLibrary() {
+  const cards = document.querySelectorAll("#loopList .loop");
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    const id = card.dataset.loop;
+    const on = nowPlaying === id;
+    card.classList.toggle("playing", on);
+    const loopOn = id === "notes" ? !!state.player.repeat : looping(id);
+    const toggle = card.querySelector('[data-act="loop"]');
+    toggle.setAttribute("aria-pressed", String(loopOn));
+    toggle.textContent = loopOn ? "Loop on" : "Loop off";
+    const play = card.querySelector('[data-act="play"]');
+    play.classList.toggle("on", on);
+    play.disabled = !!engine.recording;
+  }
+  const notes = document.getElementById("notePlayer");
+  if (notes) notes.hidden = !(noteOpen || nowPlaying === "notes");
+  paintRecord();
+}
+
+function paintRecord() {
+  const recording = !!engine.recording;
+  document.getElementById("recordBtn").hidden = recording;
+  document.getElementById("recordingBar").hidden = !recording;
+  const card = document.getElementById("takeCard");
+  card.hidden = !currentTake;
+  if (!currentTake) return;
+  const seconds = currentTake.samples.length / currentTake.sampleRate;
+  const loopOn = currentTake.loop !== false;
+  document.getElementById("takeHint").textContent = clock(seconds) + " recorded. It loops through the pedals. Turn a knob and you hear it on the next pass.";
+  document.getElementById("playTake").classList.toggle("on", nowPlaying === "take");
+  document.getElementById("playTake").disabled = seconds < 0.05;
+  const loopBtn = document.getElementById("takeLoop");
+  loopBtn.setAttribute("aria-pressed", String(loopOn));
+  loopBtn.textContent = loopOn ? "Loop on" : "Loop off";
+  const start = currentTake.trimStart || 0;
+  const end = currentTake.trimEnd > 0 ? currentTake.trimEnd : seconds;
+  document.getElementById("trimStart").value = String(Math.round(1000 * start / Math.max(seconds, 0.01)));
+  document.getElementById("trimEnd").value = String(Math.round(1000 * end / Math.max(seconds, 0.01)));
+  document.getElementById("trimStartLabel").textContent = clock(start);
+  document.getElementById("trimEndLabel").textContent = clock(end);
 }
 
 function choiceInner(copy) {
@@ -292,25 +363,6 @@ function commitOrder(next) {
   scheduleSave();
 }
 
-function fillDevices(list) {
-  const sel = document.getElementById("device");
-  const current = state.deviceId;
-  sel.replaceChildren();
-  const def = document.createElement("option");
-  def.value = "";
-  def.textContent = "Default microphone";
-  sel.appendChild(def);
-  const devices = list || [];
-  for (let i = 0; i < devices.length; i++) {
-    const o = document.createElement("option");
-    o.value = devices[i].deviceId;
-    o.textContent = devices[i].label || "Microphone";
-    sel.appendChild(o);
-  }
-  const known = [...sel.options].some((o) => o.value === current);
-  sel.value = known ? current : "";
-}
-
 let playDownAt = 0;
 let noteHeld = false;
 let pressId = 0;
@@ -318,6 +370,8 @@ let pressId = 0;
 async function playDown() {
   const id = ++pressId;
   noteHeld = true;
+  nowPlaying = "notes";
+  noteOpen = true;
   playDownAt = performance.now();
   engine.ensureContext();
   try {
@@ -337,29 +391,160 @@ function playUp() {
   engine.playUp(playerSpec(), performance.now() - playDownAt);
 }
 
-async function useGuitar() {
+async function playLibrary(id) {
+  if (engine.recording) {
+    setStatus("Stop recording first.");
+    return;
+  }
+  if (id === "notes") {
+    noteOpen = true;
+    nowPlaying = "notes";
+    if (engine.ctx) engine.stopPlayback();
+    paintLibrary();
+    playDown();
+    return;
+  }
+  noteOpen = false;
   engine.ensureContext();
   try {
     await engine.prepare(state);
-    await engine.useGuitar(state.deviceId);
-    state.source = "guitar";
-    saveNow();
-    paintPlayer();
-    setStatus("Guitar is on.");
+    engine.playBuffer(engine.libraryBuffer(id), { loop: looping(id), id });
+    nowPlaying = id;
+    setStatus("");
   } catch (err) {
-    state.source = "test";
-    if (engine.ctx) engine.leaveGuitar();
-    paintPlayer();
-    setStatus("The browser didn't allow the microphone. You can still play notes.");
+    setStatus("Audio didn't start. Tap Play again.");
   }
+  paintLibrary();
 }
 
-function showNotes() {
-  state.source = "test";
-  if (engine.ctx) engine.leaveGuitar();
-  paintPlayer();
-  saveNow();
+function stopLibrary(id) {
+  if (id === "notes") {
+    nowPlaying = "";
+    engine.stopRepeat();
+    engine.stopTest();
+    engine.releaseTone(0.05);
+    engine.stopVoices();
+  } else if (engine.playingId === id) {
+    engine.stopPlayback();
+    nowPlaying = "";
+  }
+  paintLibrary();
+}
+
+function toggleLoop(id) {
+  if (id === "notes") {
+    state.player.repeat = !state.player.repeat;
+    if (!state.player.repeat) engine.stopRepeat();
+    scheduleSave();
+    paintPlayer();
+    return;
+  }
+  if (!state.looping) state.looping = {};
+  state.looping[id] = !looping(id);
+  scheduleSave();
+  if (nowPlaying === id && engine.ctx) {
+    engine.playBuffer(engine.libraryBuffer(id), { loop: looping(id), id });
+  }
+  paintLibrary();
+}
+
+async function startRecord() {
+  if (engine.recording) return;
+  nowPlaying = "";
+  if (engine.ctx) engine.stopPlayback();
+  engine.ensureContext();
   setStatus("");
+  try {
+    await engine.beginRecord();
+  } catch (err) {
+    setStatus("The browser didn't allow the microphone. You can still play loops.");
+  }
+  paintLibrary();
+}
+
+async function playCurrentTake() {
+  if (!currentTake || engine.recording) return;
+  const seconds = currentTake.samples.length / currentTake.sampleRate;
+  if (seconds < 0.05) return;
+  engine.ensureContext();
+  try {
+    await engine.prepare(state);
+    const start = currentTake.trimStart || 0;
+    const end = currentTake.trimEnd > 0 ? currentTake.trimEnd : seconds;
+    const buffer = engine.bufferFromSamples(currentTake.samples, currentTake.sampleRate);
+    engine.playBuffer(buffer, {
+      loop: currentTake.loop !== false,
+      offset: start,
+      duration: Math.max(0.05, end - start),
+      id: "take",
+    });
+    nowPlaying = "take";
+    noteOpen = false;
+    setStatus("");
+  } catch (err) {
+    setStatus("Audio didn't start. Tap Play again.");
+  }
+  paintLibrary();
+}
+
+function readTrim() {
+  if (!currentTake) return;
+  const seconds = currentTake.samples.length / currentTake.sampleRate;
+  let start = Number(document.getElementById("trimStart").value) / 1000 * seconds;
+  let end = Number(document.getElementById("trimEnd").value) / 1000 * seconds;
+  if (end < start + 0.05) end = Math.min(seconds, start + 0.05);
+  currentTake.trimStart = start;
+  currentTake.trimEnd = end;
+  document.getElementById("trimStartLabel").textContent = clock(start);
+  document.getElementById("trimEndLabel").textContent = clock(end);
+}
+
+function openTakes() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("effects-lab-takes", 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("takes")) db.createObjectStore("takes");
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function persistTake() {
+  if (!currentTake || !currentTake.samples) return;
+  try {
+    const db = await openTakes();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readwrite");
+      tx.objectStore("takes").put({
+        sampleRate: currentTake.sampleRate,
+        samples: currentTake.samples,
+        trimStart: currentTake.trimStart || 0,
+        trimEnd: currentTake.trimEnd || 0,
+        loop: currentTake.loop !== false,
+      }, "last");
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (err) { /* private mode */ }
+}
+
+async function loadTake() {
+  try {
+    const db = await openTakes();
+    const row = await new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readonly");
+      const req = tx.objectStore("takes").get("last");
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    if (!row || !row.samples || row.samples.length < 8) return;
+    currentTake = row;
+    paintRecord();
+  } catch (err) { /* first visit */ }
 }
 
 function choosePreset(id) {
@@ -454,20 +639,29 @@ function init() {
   renderBoard();
   renderAdd();
   chainLabel();
-  renderPlayer();
+  renderLibrary();
   paintFromState();
-  fillDevices([]);
+  loadTake();
 
   engine.onMeter = paintMeter;
+  engine.onPlayEnd = () => {
+    if (nowPlaying !== "notes") nowPlaying = "";
+    paintLibrary();
+  };
+  engine.onRecordState = () => paintLibrary();
+  engine.onTake = (take) => {
+    currentTake = take;
+    nowPlaying = "";
+    paintLibrary();
+    persistTake();
+    if (take.heard && take.samples.length > take.sampleRate * 0.05) playCurrentTake();
+    else setStatus("That take was quiet. Trim it, or record again.");
+  };
   engine.onRunaway = (on) => {
     document.getElementById("runaway").hidden = !on;
     if (on) setStatus("");
   };
   document.getElementById("unmute").addEventListener("click", () => engine.unmute());
-  engine.onDevices = (list) => {
-    fillDevices(list);
-    paintPlayer();
-  };
 
   const playNote = document.getElementById("playNote");
   playNote.addEventListener("pointerdown", (e) => {
@@ -530,26 +724,43 @@ function init() {
     paintPlayer();
     scheduleSave();
   });
-  document.getElementById("useGuitar").addEventListener("click", useGuitar);
-  document.getElementById("useGuitarNow").addEventListener("click", useGuitar);
-  document.getElementById("playNotes").addEventListener("click", showNotes);
+  document.getElementById("loopList").addEventListener("click", (e) => {
+    const card = e.target.closest("[data-loop]");
+    const btn = e.target.closest("[data-act]");
+    if (!card || !btn) return;
+    const id = card.dataset.loop;
+    if (btn.dataset.act === "play") playLibrary(id);
+    else if (btn.dataset.act === "stop") stopLibrary(id);
+    else toggleLoop(id);
+  });
+  document.getElementById("recordBtn").addEventListener("click", startRecord);
+  document.getElementById("stopRecord").addEventListener("click", () => engine.stopRecord());
+  document.getElementById("reRecord").addEventListener("click", startRecord);
+  document.getElementById("playTake").addEventListener("click", playCurrentTake);
+  document.getElementById("stopTake").addEventListener("click", () => {
+    engine.stopPlayback();
+    nowPlaying = "";
+    paintLibrary();
+  });
+  document.getElementById("takeLoop").addEventListener("click", () => {
+    if (!currentTake) return;
+    currentTake.loop = !(currentTake.loop !== false);
+    persistTake();
+    if (nowPlaying === "take") playCurrentTake();
+    else paintRecord();
+  });
+  document.getElementById("trimStart").addEventListener("input", readTrim);
+  document.getElementById("trimEnd").addEventListener("input", readTrim);
+  const applyTrim = () => {
+    readTrim();
+    persistTake();
+    if (nowPlaying === "take") playCurrentTake();
+  };
+  document.getElementById("trimStart").addEventListener("change", applyTrim);
+  document.getElementById("trimEnd").addEventListener("change", applyTrim);
   document.getElementById("presets").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-preset]");
     if (btn) choosePreset(btn.dataset.preset);
-  });
-  document.getElementById("device").addEventListener("change", async (e) => {
-    state.deviceId = e.target.value;
-    scheduleSave();
-    if (state.source === "guitar" && engine.micStream) {
-      engine.ensureContext();
-      try {
-        await engine.prepare(state);
-        await engine.openMic(state.deviceId);
-        setStatus("Guitar is on.");
-      } catch (err) {
-        setStatus("Couldn't open that input.");
-      }
-    }
   });
   document.getElementById("addRow").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-add]");
@@ -683,14 +894,6 @@ function init() {
 
   window.matchMedia("(min-width: 900px)").addEventListener("change", nudgeGlyphs);
   window.addEventListener("pagehide", saveNow);
-  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
-    navigator.mediaDevices.addEventListener("devicechange", () => {
-      if (!navigator.mediaDevices.enumerateDevices) return;
-      navigator.mediaDevices.enumerateDevices().then((all) => {
-        fillDevices(all.filter((d) => d.kind === "audioinput"));
-      }).catch(() => {});
-    });
-  }
 
   window.__lab = {
     get state() { return state; },
@@ -701,11 +904,15 @@ function init() {
     get constraints() { return engine.constraints; },
     get attempts() { return engine.attempts; },
     get reverbMode() { return engine.reverbMode; },
-    preview(id, taps) {
+    get outputConnected() { return !!engine.outputConnected; },
+    get recording() { return !!engine.recording; },
+    get recordedSamples() { return engine.recorder ? engine.recorder.samples : 0; },
+    get micLive() { return !!(engine.micStream && engine.micStream.getTracks().some((track) => track.readyState === "live")); },
+    loops: LOOPS,
+    preview(id, loopId) {
       const base = initialState();
       const next = id ? applyPreset(base, id) : base;
-      next.player = defaultPlayer();
-      return renderPreview(next, taps);
+      return renderPreview(next, loopId || "chords");
     },
     defaultKnob(pedal, param) { return defaultKnobPosition(pedal, param); },
     APP_CONFIG,

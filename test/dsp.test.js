@@ -51,7 +51,7 @@ test("double-tap timing and knob defaults", () => {
   assert.equal(defaultKnobPosition("global", "master"), 0.8);
   assert.equal(defaultKnobPosition("reverb", "decay"), 0.4);
   const saved = serialize(initialState());
-  assert.equal(saved.v, 2);
+  assert.equal(saved.v, 3);
   saved.pedals.delay.params.feedback = 4;
   saved.inputGain = 99;
   const back = hydrate(saved);
@@ -85,9 +85,9 @@ test("test sounds use plain names and a one-line hint", () => {
   }
 });
 
-test("first load is the test note, not the microphone", () => {
+test("first load is the loop library, not the microphone", () => {
   const state = initialState();
-  assert.equal(state.source, "test");
+  assert.equal(state.source, "library");
   assert.equal(state.player.note, "C");
   assert.equal(state.player.octave, 3);
   assert.equal(state.player.sound, "pluck");
@@ -99,8 +99,8 @@ test("first load is the test note, not the microphone", () => {
   assert.equal(chord.length, 4);
   assert.ok(chord[1] / chord[0] > 1.2 && chord[1] / chord[0] < 1.3);
   assert.ok(chord[3] / chord[0] > 1.9 && chord[3] / chord[0] < 2.1);
-  assert.equal(hydrate({}).source, "test");
-  assert.equal(hydrate({ source: "guitar" }).source, "guitar");
+  assert.equal(hydrate({}).source, "library");
+  assert.equal(hydrate({ source: "guitar" }).source, "library");
 });
 
 test("delay time is a capped log sweep and feedback cannot run away", () => {
@@ -220,7 +220,7 @@ test("chain reorder and hydrate ignore garbage", () => {
   assert.equal(back.pedals.reverb.onBoard, false);
   assert.equal(back.pedals.reverb.enabled, false);
   assert.equal(back.inputGain, INPUT_GAIN_MAX);
-  assert.equal(back.source, "test");
+  assert.equal(back.source, "library");
   assert.equal(back.master, 0.6);
   const again = hydrate(serialize(back));
   assert.deepEqual(again.order, back.order);

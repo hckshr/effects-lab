@@ -1,6 +1,6 @@
 # Effects Lab
 
-A guitar pedalboard that runs in the browser. Plug in with an audio interface or the phone mic, or play the built-in test sound, and hear drive, modulation, filter, delay, and reverb while you turn the knobs.
+A guitar pedalboard that runs in the browser. Play a built-in loop, or record a short take, and hear drive, modulation, filter, delay, and reverb while you turn the knobs. The microphone is never monitored live.
 
 **Try it:** [effects-lab.hckshr.workers.dev](https://effects-lab.hckshr.workers.dev/)
 
@@ -8,11 +8,12 @@ The name on the page comes from `APP_CONFIG.name` in `src/config.js`. Change tha
 
 ## How to use it
 
-1. Tap **Play note**. You hear a plucked C through the pedals. The microphone stays off. Double-tap a knob to put it back to its default (Input returns to 0 dB).
-2. Pick another note, an octave, and a sound. **Single note**, **Chord**, **Held note**, and **Riff** each say what they play. **Auto-replay** starts the sound again every couple of seconds. Hold **Play note** while Held note is selected to keep the note going.
-3. Tap **Use my guitar** only when you want to play through an input. That is when the page asks for the microphone. Pick the input if you have more than one. Echo cancellation, noise suppression, and auto gain are off, and low latency is requested, so the guitar stays direct.
-4. Wear headphones if you are using the phone mic. Otherwise the speaker feeds back into the mic.
-5. Stomp a pedal on, turn its knobs, and use **More** for the extra controls. **Add** puts a pedal on the board. Drag a pedal by its name, or use the arrows, to change the order. The chain runs into the next pedal, left to right on a wide screen and top to bottom on a phone.
+1. Open the **Loop library** and tap **Play** on a loop. Loop is on, so it repeats while you turn knobs. The microphone stays off. Double-tap a knob to put it back to its default (Input returns to 0 dB).
+2. **Test notes** is in the library if you want one note, a chord, or a held tone instead of a loop.
+3. Tap **Record** under **Record my guitar**, play, then tap **Stop**. It also stops if you pause, and it never runs past a minute. A short bit of audio before the first note is kept. Nothing is sent to the speakers while you record, so the guitar cannot feed back. After you stop, the take loops through the pedals. Trim the start and end, or tap **Re-record**. The last take is saved on this device.
+4. Stomp a pedal on, turn its knobs, and use **More** for the extra controls. **Add** puts a pedal on the board. Drag a pedal by its name, or use the arrows, to change the order. The chain runs into the next pedal, left to right on a wide screen and top to bottom on a phone.
+
+The loops are synthesized in `src/loops.js`. Sources and the license are in `licenses/LOOPS.txt`.
 
 Each pedal's main knobs:
 

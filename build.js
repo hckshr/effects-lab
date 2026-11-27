@@ -21,7 +21,7 @@ if (!nameMatch) {
 }
 const appName = nameMatch[1];
 
-const js = ["config.js", "dsp.js", "reverb-core.js", "envelope-core.js", "engine.js", "ui.js"]
+const js = ["config.js", "dsp.js", "loops.js", "takes.js", "reverb-core.js", "envelope-core.js", "engine.js", "ui.js"]
   .map(rd)
   .join("\n;\n")
   .replace(/<\/script/gi, "<\\/script");

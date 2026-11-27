@@ -15,34 +15,58 @@
       <div class="title-row">
         <h1 id="appTitle">/*APP_NAME*/</h1>
       </div>
-      <p id="tip" class="tip">Wear headphones if you use the phone mic, so the sound doesn't feed back.</p>
-      <div class="controls">
-        <div>
-          <div id="player">
-            <button id="playNote" type="button">Play note</button>
-            <div class="octave-row">
-              <button type="button" id="octaveDown" aria-label="Octave down">−</button>
-              <p id="noteReadout" class="note-readout">C3</p>
-              <button type="button" id="octaveUp" aria-label="Octave up">+</button>
-            </div>
-            <div id="notes" class="notes" role="group" aria-label="Note"></div>
-            <div id="sounds" class="sounds" role="group" aria-label="Sound"></div>
-            <button type="button" id="repeat" aria-pressed="false"></button>
-            <button type="button" id="useGuitar" class="quiet">Use my guitar</button>
-          </div>
-          <div id="guitarBox" hidden>
-            <button type="button" id="useGuitarNow">Use my guitar</button>
-            <label class="device-label" for="device">Input</label>
-            <select id="device" aria-label="Audio input"></select>
-            <button type="button" id="playNotes" class="quiet">Play notes</button>
-          </div>
-          <p id="status" role="status"></p>
-          <p id="runaway" class="runaway" hidden>
-            <span>Muted: runaway sound</span>
-            <button type="button" id="unmute">Unmute</button>
-          </p>
+      <p id="tip" class="tip">Play a loop, or record a take. The mic is only on while you record, and nothing plays out until you stop.</p>
+    </header>
+    <section id="library" aria-label="Loop library">
+      <h2>Loop library</h2>
+      <p class="hint">Tap Play. Loop is on, so it repeats while you turn the knobs. No microphone needed.</p>
+      <div id="loopList"></div>
+      <div id="notePlayer" hidden>
+        <button id="playNote" type="button">Play note</button>
+        <div class="octave-row">
+          <button type="button" id="octaveDown" aria-label="Octave down">−</button>
+          <p id="noteReadout" class="note-readout">C3</p>
+          <button type="button" id="octaveUp" aria-label="Octave up">+</button>
         </div>
-        <div class="levels">
+        <div id="notes" class="notes" role="group" aria-label="Note"></div>
+        <div id="sounds" class="sounds" role="group" aria-label="Sound"></div>
+        <button type="button" id="repeat" aria-pressed="false"></button>
+      </div>
+    </section>
+    <section id="recorder" aria-label="Record my guitar">
+      <h2>Record my guitar</h2>
+      <p class="hint">Tap Record and play. Tap Stop, or pause and it stops on its own. The mic is only on while recording, and the speakers stay quiet so it can't feed back.</p>
+      <button id="recordBtn" type="button">Record</button>
+      <div id="recordingBar" hidden>
+        <button id="stopRecord" type="button">Stop</button>
+        <p>Recording. Tap Stop, or pause and it will stop. One minute at most.</p>
+      </div>
+      <article id="takeCard" hidden>
+        <h3>Your take</h3>
+        <p class="hint" id="takeHint">The last thing you recorded, looping through the pedals.</p>
+        <div class="loop-actions">
+          <button type="button" id="playTake">Play</button>
+          <button type="button" id="stopTake">Stop</button>
+          <button type="button" id="takeLoop" aria-pressed="true">Loop on</button>
+        </div>
+        <label class="trim">Trim start <span id="trimStartLabel">0:00</span>
+          <input id="trimStart" type="range" min="0" max="1000" value="0" />
+        </label>
+        <label class="trim">Trim end <span id="trimEndLabel">0:00</span>
+          <input id="trimEnd" type="range" min="0" max="1000" value="1000" />
+        </label>
+        <button type="button" id="reRecord" class="quiet">Re-record</button>
+      </article>
+    </section>
+    <div class="controls">
+      <div>
+        <p id="status" role="status"></p>
+        <p id="runaway" class="runaway" hidden>
+          <span>Muted: runaway sound</span>
+          <button type="button" id="unmute">Unmute</button>
+        </p>
+      </div>
+      <div class="levels">
           <div class="meter-block">
             <span>Level</span>
             <div id="meter" class="meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -53,7 +77,6 @@
           <div id="masterSlot"></div>
         </div>
       </div>
-    </header>
     <div id="presets" class="presets" role="group" aria-label="Presets"></div>
     <section class="board-wrap" aria-label="Pedalboard">
       <p id="chainLabel" class="chain"></p>

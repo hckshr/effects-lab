@@ -6,7 +6,7 @@ export const MAX_DELAY_FEEDBACK = 0.7;
 export const MAX_FLANGER_FEEDBACK = 0.55;
 export const MAX_PHASER_FEEDBACK = 0.5;
 export const MAX_STRING_FEEDBACK = 0.78;
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 3;
 export const DOUBLE_TAP_MS = 320;
 export const INPUT_GAIN_MAX = 3;
 export const DELAY_MIN = 0.04;
@@ -476,7 +476,7 @@ export function freshState() {
     };
   }
   return {
-    source: "test",
+    source: "library",
     deviceId: "",
     inputGain: 1,
     master: 0.8,
@@ -527,6 +527,7 @@ export function serialize(state) {
     inputGain: state.inputGain,
     master: state.master,
     player: Object.assign(defaultPlayer(), state.player),
+    looping: Object.assign({}, state.looping || {}),
     order: state.order.slice(),
     preset: state.preset,
     pedals,
@@ -536,8 +537,14 @@ export function serialize(state) {
 export function hydrate(raw) {
   if (!raw || typeof raw !== "object") return initialState();
   const next = freshState();
-  next.source = raw.source === "guitar" ? "guitar" : "test";
+  next.source = "library";
   next.player = sanitizePlayer(raw.player);
+  next.looping = {};
+  if (raw.looping && typeof raw.looping === "object") {
+    for (const key of Object.keys(raw.looping)) {
+      if (typeof key === "string" && key.length < 32) next.looping[key] = !!raw.looping[key];
+    }
+  }
   next.deviceId = typeof raw.deviceId === "string" ? raw.deviceId.slice(0, 256) : "";
   const ig = Number(raw.inputGain);
   next.inputGain = Number.isFinite(ig) ? clamp(ig, 0, INPUT_GAIN_MAX) : 1;

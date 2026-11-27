@@ -66,7 +66,101 @@ h1 {
   max-width: 40rem;
 }
 
-#playNote, #useGuitarNow {
+h2 {
+  margin: 18px 0 0;
+  font-size: 1.25rem;
+}
+
+.hint {
+  margin: 6px 0 10px;
+  color: var(--muted);
+}
+
+.loop {
+  margin-top: 10px;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.loop h3, #takeCard h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.loop p, #takeCard .hint { margin: 4px 0 8px; }
+
+.loop.playing { border-color: var(--gold); }
+
+.loop-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.loop-actions button, #recordBtn, #stopRecord, #reRecord {
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #241f1a;
+  touch-action: manipulation;
+}
+
+.loop-actions button { flex: 1; font-weight: 700; }
+.loop-actions button.on { background: var(--cream); color: var(--ink); border-color: transparent; }
+
+#recordBtn, #stopRecord {
+  width: 100%;
+  font-size: 1.35rem;
+  font-weight: 750;
+}
+
+#recordBtn {
+  background: var(--cream);
+  color: var(--ink);
+  border: 0;
+  box-shadow: 0 8px 0 #6d6456;
+}
+
+#stopRecord {
+  background: #f0d2c4;
+  color: #2a120e;
+  border: 0;
+  box-shadow: 0 8px 0 #6a4036;
+}
+
+#recordingBar {
+  margin-top: 8px;
+}
+
+#recordingBar p { color: var(--muted); }
+
+#takeCard {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.trim {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.trim input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 44px;
+  accent-color: var(--gold);
+}
+
+#reRecord { width: 100%; margin-top: 8px; color: var(--muted); background: transparent; }
+
+#playNote, #recordBtn {
   width: 100%;
   min-height: 76px;
   border: 0;
@@ -80,7 +174,7 @@ h1 {
   touch-action: none;
 }
 
-#playNote:active, #playNote.is-down, #useGuitarNow:active {
+#playNote:active, #playNote.is-down, #recordBtn:active, #stopRecord:active {
   transform: translateY(2px);
   box-shadow: 0 6px 0 #6d6456;
 }
@@ -598,34 +692,58 @@ select:disabled { opacity: 0.45; }
       <div class="title-row">
         <h1 id="appTitle">Effects Lab</h1>
       </div>
-      <p id="tip" class="tip">Wear headphones if you use the phone mic, so the sound doesn't feed back.</p>
-      <div class="controls">
-        <div>
-          <div id="player">
-            <button id="playNote" type="button">Play note</button>
-            <div class="octave-row">
-              <button type="button" id="octaveDown" aria-label="Octave down">−</button>
-              <p id="noteReadout" class="note-readout">C3</p>
-              <button type="button" id="octaveUp" aria-label="Octave up">+</button>
-            </div>
-            <div id="notes" class="notes" role="group" aria-label="Note"></div>
-            <div id="sounds" class="sounds" role="group" aria-label="Sound"></div>
-            <button type="button" id="repeat" aria-pressed="false"></button>
-            <button type="button" id="useGuitar" class="quiet">Use my guitar</button>
-          </div>
-          <div id="guitarBox" hidden>
-            <button type="button" id="useGuitarNow">Use my guitar</button>
-            <label class="device-label" for="device">Input</label>
-            <select id="device" aria-label="Audio input"></select>
-            <button type="button" id="playNotes" class="quiet">Play notes</button>
-          </div>
-          <p id="status" role="status"></p>
-          <p id="runaway" class="runaway" hidden>
-            <span>Muted: runaway sound</span>
-            <button type="button" id="unmute">Unmute</button>
-          </p>
+      <p id="tip" class="tip">Play a loop, or record a take. The mic is only on while you record, and nothing plays out until you stop.</p>
+    </header>
+    <section id="library" aria-label="Loop library">
+      <h2>Loop library</h2>
+      <p class="hint">Tap Play. Loop is on, so it repeats while you turn the knobs. No microphone needed.</p>
+      <div id="loopList"></div>
+      <div id="notePlayer" hidden>
+        <button id="playNote" type="button">Play note</button>
+        <div class="octave-row">
+          <button type="button" id="octaveDown" aria-label="Octave down">−</button>
+          <p id="noteReadout" class="note-readout">C3</p>
+          <button type="button" id="octaveUp" aria-label="Octave up">+</button>
         </div>
-        <div class="levels">
+        <div id="notes" class="notes" role="group" aria-label="Note"></div>
+        <div id="sounds" class="sounds" role="group" aria-label="Sound"></div>
+        <button type="button" id="repeat" aria-pressed="false"></button>
+      </div>
+    </section>
+    <section id="recorder" aria-label="Record my guitar">
+      <h2>Record my guitar</h2>
+      <p class="hint">Tap Record and play. Tap Stop, or pause and it stops on its own. The mic is only on while recording, and the speakers stay quiet so it can't feed back.</p>
+      <button id="recordBtn" type="button">Record</button>
+      <div id="recordingBar" hidden>
+        <button id="stopRecord" type="button">Stop</button>
+        <p>Recording. Tap Stop, or pause and it will stop. One minute at most.</p>
+      </div>
+      <article id="takeCard" hidden>
+        <h3>Your take</h3>
+        <p class="hint" id="takeHint">The last thing you recorded, looping through the pedals.</p>
+        <div class="loop-actions">
+          <button type="button" id="playTake">Play</button>
+          <button type="button" id="stopTake">Stop</button>
+          <button type="button" id="takeLoop" aria-pressed="true">Loop on</button>
+        </div>
+        <label class="trim">Trim start <span id="trimStartLabel">0:00</span>
+          <input id="trimStart" type="range" min="0" max="1000" value="0" />
+        </label>
+        <label class="trim">Trim end <span id="trimEndLabel">0:00</span>
+          <input id="trimEnd" type="range" min="0" max="1000" value="1000" />
+        </label>
+        <button type="button" id="reRecord" class="quiet">Re-record</button>
+      </article>
+    </section>
+    <div class="controls">
+      <div>
+        <p id="status" role="status"></p>
+        <p id="runaway" class="runaway" hidden>
+          <span>Muted: runaway sound</span>
+          <button type="button" id="unmute">Unmute</button>
+        </p>
+      </div>
+      <div class="levels">
           <div class="meter-block">
             <span>Level</span>
             <div id="meter" class="meter" role="meter" aria-label="Input level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -636,7 +754,6 @@ select:disabled { opacity: 0.45; }
           <div id="masterSlot"></div>
         </div>
       </div>
-    </header>
     <div id="presets" class="presets" role="group" aria-label="Presets"></div>
     <section class="board-wrap" aria-label="Pedalboard">
       <p id="chainLabel" class="chain"></p>
@@ -645,7 +762,7 @@ select:disabled { opacity: 0.45; }
     </section>
   </main>
   <script type="module">
-    const WORKLET_URL = "/worklet.js?v=768a8c6118";
+    const WORKLET_URL = "/worklet.js?v=7d6c8393a2";
     // The name shown on the page. Change this, then run `node build.js`.
 // The Worker name and the workers.dev host are set in wrangler.toml.
 export const APP_CONFIG = {
@@ -661,7 +778,7 @@ export const MAX_DELAY_FEEDBACK = 0.7;
 export const MAX_FLANGER_FEEDBACK = 0.55;
 export const MAX_PHASER_FEEDBACK = 0.5;
 export const MAX_STRING_FEEDBACK = 0.78;
-export const STORAGE_VERSION = 2;
+export const STORAGE_VERSION = 3;
 export const DOUBLE_TAP_MS = 320;
 export const INPUT_GAIN_MAX = 3;
 export const DELAY_MIN = 0.04;
@@ -1131,7 +1248,7 @@ export function freshState() {
     };
   }
   return {
-    source: "test",
+    source: "library",
     deviceId: "",
     inputGain: 1,
     master: 0.8,
@@ -1182,6 +1299,7 @@ export function serialize(state) {
     inputGain: state.inputGain,
     master: state.master,
     player: Object.assign(defaultPlayer(), state.player),
+    looping: Object.assign({}, state.looping || {}),
     order: state.order.slice(),
     preset: state.preset,
     pedals,
@@ -1191,8 +1309,14 @@ export function serialize(state) {
 export function hydrate(raw) {
   if (!raw || typeof raw !== "object") return initialState();
   const next = freshState();
-  next.source = raw.source === "guitar" ? "guitar" : "test";
+  next.source = "library";
   next.player = sanitizePlayer(raw.player);
+  next.looping = {};
+  if (raw.looping && typeof raw.looping === "object") {
+    for (const key of Object.keys(raw.looping)) {
+      if (typeof key === "string" && key.length < 32) next.looping[key] = !!raw.looping[key];
+    }
+  }
   next.deviceId = typeof raw.deviceId === "string" ? raw.deviceId.slice(0, 256) : "";
   const ig = Number(raw.inputGain);
   next.inputGain = Number.isFinite(ig) ? clamp(ig, 0, INPUT_GAIN_MAX) : 1;
@@ -1225,6 +1349,333 @@ export function hydrate(raw) {
   }
   next.preset = PRESETS.some((p) => p.id === raw.preset) ? raw.preset : null;
   return next;
+}
+
+;
+// Original loops, synthesized in this file. No samples, no third-party audio.
+// Each buffer is an exact number of bars and crossfaded so the loop point is seamless.
+
+export const LOOP_BPM = 96;
+export const LOOP_BARS = 2;
+
+export const LOOPS = [
+  { id: "chords", name: "Clean chords", hint: "Open electric chords. Hear the reverb and delay tail.", kind: "buffer" },
+  { id: "riff", name: "Guitar riff", hint: "A single-note line that repeats.", kind: "buffer" },
+  { id: "arp", name: "Arpeggio", hint: "Notes picked one at a time.", kind: "buffer" },
+  { id: "bass", name: "Bass line", hint: "A simple low line under the pedals.", kind: "buffer" },
+  { id: "drums", name: "Drum beat", hint: "Kick, snare, and hats, looping.", kind: "buffer" },
+  { id: "keys", name: "Soft keys", hint: "A held pad. Good for chorus and wash.", kind: "buffer" },
+  { id: "lead", name: "Synth lead", hint: "A bright melody, a little like a voice.", kind: "buffer" },
+  { id: "notes", name: "Test notes", hint: "Pick one note, a chord, or a held tone. The mic stays off.", kind: "notes" },
+];
+
+export function loopSeconds() {
+  return LOOP_BARS * 4 * (60 / LOOP_BPM);
+}
+
+export function bufferLoops() {
+  return LOOPS.filter((loop) => loop.kind === "buffer");
+}
+
+function hz(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function makeRand(seed) {
+  let a = seed >>> 0;
+  return function rand() {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function beatSample(sr, beat) {
+  return Math.round(beat * (60 / LOOP_BPM) * sr);
+}
+
+function addPluck(buf, sr, start, freq, seconds, amp, rand) {
+  if (start >= buf.length) return;
+  const period = Math.max(2, Math.round(sr / freq));
+  const delay = new Float32Array(period);
+  for (let i = 0; i < period; i++) delay[i] = rand() * 2 - 1;
+  const n = Math.min(buf.length - start, Math.round(seconds * sr));
+  let idx = 0;
+  let prev = 0;
+  const fb = 0.945;
+  for (let i = 0; i < n; i++) {
+    const x = delay[idx];
+    const y = fb * (0.5 * x + 0.5 * prev);
+    prev = y;
+    delay[idx] = y;
+    idx++;
+    if (idx >= period) idx = 0;
+    const att = i < 12 ? i / 12 : 1;
+    buf[start + i] += y * amp * att;
+  }
+}
+
+function addChord(buf, sr, start, midis, rand) {
+  for (let i = 0; i < midis.length; i++) {
+    addPluck(buf, sr, start + Math.round(i * 0.014 * sr), hz(midis[i]), 1.9, 0.2, rand);
+  }
+}
+
+function addBass(buf, sr, start, midi, seconds) {
+  const n = Math.min(buf.length - start, Math.round(seconds * sr));
+  const freq = hz(midi);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const env = Math.exp(-t * 2.4) * (1 - Math.exp(-t * 90));
+    const p = 2 * Math.PI * freq * t;
+    const y = Math.sin(p) * 0.72 + Math.sin(2 * p) * 0.18 + Math.sin(3 * p) * 0.08;
+    buf[start + i] += y * env * 0.55;
+  }
+}
+
+function addKick(buf, sr, start) {
+  const n = Math.min(buf.length - start, Math.round(0.22 * sr));
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const f = 48 + 130 * Math.exp(-t * 26);
+    phase += 2 * Math.PI * f / sr;
+    const env = Math.exp(-t * 16) * (1 - Math.exp(-t * 400));
+    buf[start + i] += Math.sin(phase) * env * 0.95;
+  }
+}
+
+function addSnare(buf, sr, start, rand) {
+  const n = Math.min(buf.length - start, Math.round(0.18 * sr));
+  let lp = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const noise = rand() * 2 - 1;
+    lp += 0.18 * (noise - lp);
+    const env = Math.exp(-t * 20);
+    const body = Math.sin(2 * Math.PI * 180 * t) * Math.exp(-t * 28);
+    buf[start + i] += ((noise - lp) * 0.55 + body * 0.35) * env;
+  }
+}
+
+function addHat(buf, sr, start, rand, open) {
+  const n = Math.min(buf.length - start, Math.round((open ? 0.09 : 0.04) * sr));
+  let lp = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const noise = rand() * 2 - 1;
+    lp += 0.08 * (noise - lp);
+    const env = Math.exp(-t * (open ? 28 : 70));
+    buf[start + i] += (noise - lp) * env * 0.22;
+  }
+}
+
+function addLead(buf, sr, start, midi, seconds) {
+  const n = Math.min(buf.length - start, Math.round(seconds * sr));
+  const freq = hz(midi);
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const env = Math.sin(Math.PI * Math.min(1, i / n)) * Math.exp(-t * 1.6);
+    let y = 0;
+    for (let h = 1; h <= 5; h++) y += Math.sin(2 * Math.PI * freq * h * t) / h;
+    buf[start + i] += y * env * 0.18;
+  }
+}
+
+function periodicHz(midi, n, sr) {
+  const cycles = Math.max(1, Math.round(hz(midi) * n / sr));
+  return cycles * sr / n;
+}
+
+function renderInto(id, sr) {
+  const seconds = loopSeconds();
+  const n = Math.round(sr * seconds);
+  const buf = new Float32Array(n);
+  const rand = makeRand(id.length * 10007 + id.charCodeAt(0) * 17);
+  if (id === "chords") {
+    addChord(buf, sr, beatSample(sr, 0), [48, 52, 55, 59], rand);
+    addChord(buf, sr, beatSample(sr, 4), [45, 48, 52, 57], rand);
+  } else if (id === "riff") {
+    const notes = [45, 48, 50, 52, 50, 48, 45, 43];
+    for (let i = 0; i < notes.length; i++) addPluck(buf, sr, beatSample(sr, i), hz(notes[i]), 0.42, 0.55, rand);
+  } else if (id === "arp") {
+    const notes = [60, 64, 67, 72, 67, 64, 60, 55];
+    for (let i = 0; i < notes.length; i++) addPluck(buf, sr, beatSample(sr, i), hz(notes[i]), 0.4, 0.48, rand);
+  } else if (id === "bass") {
+    const notes = [33, 33, 36, 40];
+    for (let i = 0; i < notes.length; i++) addBass(buf, sr, beatSample(sr, i * 2), notes[i], 0.9);
+  } else if (id === "drums") {
+    for (let eighth = 0; eighth < 16; eighth++) {
+      const at = beatSample(sr, eighth * 0.5);
+      if (eighth % 4 === 0) addKick(buf, sr, at);
+      if (eighth % 4 === 2) addSnare(buf, sr, at, rand);
+      addHat(buf, sr, at, rand, eighth % 4 === 2);
+    }
+  } else if (id === "keys") {
+    const midis = [48, 52, 55, 59, 62];
+    const tremCycles = 2;
+    for (let i = 0; i < n; i++) {
+      const trem = 0.85 + 0.15 * Math.sin(2 * Math.PI * tremCycles * i / n);
+      let y = 0;
+      for (let p = 0; p < midis.length; p++) {
+        y += Math.sin(2 * Math.PI * periodicHz(midis[p], n, sr) * i / sr + p);
+      }
+      buf[i] += y * 0.06 * trem;
+    }
+  } else if (id === "lead") {
+    const notes = [64, 67, 69, 72, 69, 67, 64, 62];
+    for (let i = 0; i < notes.length; i++) addLead(buf, sr, beatSample(sr, i), notes[i], 0.35);
+  }
+  const out = buf;
+  if (id !== "keys") {
+    const fade = Math.round(sr * 0.02);
+    for (let i = 0; i < fade; i++) out[n - fade + i] *= 1 - i / fade;
+  }
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += out[i];
+  mean /= n;
+  let peak = 0;
+  for (let i = 0; i < n; i++) {
+    out[i] -= mean;
+    const a = out[i] < 0 ? -out[i] : out[i];
+    if (a > peak) peak = a;
+  }
+  const gain = peak > 1e-8 ? 0.42 / peak : 0;
+  for (let i = 0; i < n; i++) out[i] *= gain;
+  return out;
+}
+
+export function renderLoop(id, sampleRate) {
+  const loop = LOOPS.find((item) => item.id === id);
+  if (!loop || loop.kind !== "buffer") throw new Error("No buffer loop named " + id);
+  const sr = sampleRate > 0 ? sampleRate : 48000;
+  return renderInto(id, sr);
+}
+
+;
+// Tap-to-record bookkeeping. Pure JS, same idea as session-drummer's listener:
+// keep a short pre-roll before the first note, stop on silence or a hard maximum.
+// The mic graph itself lives in engine.js and is only open while a take is running.
+
+export const TAKE_MAX_SEC = 60;
+export const TAKE_PREROLL_SEC = 0.35;
+export const TAKE_TAIL_SEC = 0.4;
+export const TAKE_STOP_SEC = 1.8;
+export const TAKE_START_RMS = 0.015;
+
+export function createTakeRecorder(sampleRate, opts) {
+  const o = Object.assign({
+    preroll: TAKE_PREROLL_SEC,
+    tail: TAKE_TAIL_SEC,
+    stopSec: TAKE_STOP_SEC,
+    maxSec: TAKE_MAX_SEC,
+    startRms: TAKE_START_RMS,
+  }, opts || {});
+  const chunks = [];
+  let count = 0;
+  let heard = false;
+  let lastLoud = 0;
+  let level = 0;
+  return {
+    get level() { return level; },
+    get samples() { return count; },
+    get heard() { return heard; },
+    push(frame) {
+      const copy = new Float32Array(frame.length);
+      let acc = 0;
+      for (let i = 0; i < frame.length; i++) {
+        const x = Number.isFinite(frame[i]) ? frame[i] : 0;
+        copy[i] = x;
+        acc += x * x;
+      }
+      chunks.push(copy);
+      const rms = Math.sqrt(acc / Math.max(1, copy.length));
+      level = rms;
+      if (rms >= o.startRms) {
+        heard = true;
+        lastLoud = count + copy.length;
+      }
+      count += copy.length;
+      if (count >= o.maxSec * sampleRate) return "max";
+      if (heard && (count - lastLoud) / sampleRate >= o.stopSec) return "silence";
+      return null;
+    },
+    finish(reason) {
+      const all = new Float32Array(count);
+      let at = 0;
+      for (let i = 0; i < chunks.length; i++) {
+        all.set(chunks[i], at);
+        at += chunks[i].length;
+      }
+      const trimmed = trimTake(all, sampleRate, o);
+      const seconds = trimmed.audio.length / sampleRate;
+      return {
+        reason: reason || "tap",
+        sampleRate,
+        samples: trimmed.audio,
+        trimStart: 0,
+        trimEnd: seconds,
+        heard,
+        lead: trimmed.lead,
+        loop: true,
+      };
+    },
+  };
+}
+
+export function trimTake(samples, sampleRate, opts) {
+  const o = Object.assign({
+    preroll: TAKE_PREROLL_SEC,
+    tail: TAKE_TAIL_SEC,
+    startRms: TAKE_START_RMS,
+  }, opts || {});
+  const n = samples.length;
+  const hop = Math.max(1, Math.round(sampleRate * 0.01));
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < n; i += hop) {
+    const end = Math.min(n, i + hop);
+    let acc = 0;
+    for (let j = i; j < end; j++) acc += samples[j] * samples[j];
+    const rms = Math.sqrt(acc / (end - i));
+    if (rms >= o.startRms) {
+      if (first < 0) first = i;
+      last = end;
+    }
+  }
+  if (first < 0) {
+    const keep = Math.min(n, Math.round(sampleRate * 1));
+    return { audio: samples.slice(0, keep), lead: 0 };
+  }
+  const start = Math.max(0, first - Math.round(o.preroll * sampleRate));
+  const end = Math.min(n, last + Math.round(o.tail * sampleRate));
+  return { audio: samples.slice(start, Math.max(end, start)), lead: (first - start) / sampleRate };
+}
+
+export function sliceTake(samples, sampleRate, startSec, endSec) {
+  const n = samples.length;
+  const span = n / sampleRate;
+  let a = Math.round(Math.max(0, startSec) * sampleRate);
+  let b = Math.round(Math.min(span, endSec) * sampleRate);
+  if (b < a + 8) b = Math.min(n, a + 8);
+  if (a > n - 8) a = Math.max(0, n - 8);
+  return samples.slice(a, b);
+}
+
+export function resampleLinear(samples, fromRate, toRate) {
+  if (!(toRate > 0) || fromRate === toRate) return samples;
+  const n = Math.max(1, Math.round(samples.length * toRate / fromRate));
+  const out = new Float32Array(n);
+  const scale = samples.length <= 1 ? 0 : (samples.length - 1) / Math.max(1, n - 1);
+  for (let i = 0; i < n; i++) {
+    const x = i * scale;
+    const i0 = Math.floor(x);
+    const i1 = Math.min(samples.length - 1, i0 + 1);
+    const f = x - i0;
+    out[i] = samples[i0] * (1 - f) + samples[i1] * f;
+  }
+  return out;
 }
 
 ;
@@ -1958,6 +2409,15 @@ class Engine {
     this.runaway = false;
     this.hotSince = 0;
     this.onRunaway = null;
+    this.outputConnected = false;
+    this.recording = false;
+    this.recordGen = 0;
+    this.playingId = null;
+    this.recorder = null;
+    this.recordLevel = 0;
+    this.onTake = null;
+    this.onRecordState = null;
+    this.loopCache = {};
   }
 
   // Call from the user gesture, before any await, so the browser unlocks audio.
@@ -1986,20 +2446,192 @@ class Engine {
     approach(this.ctx, this.testGain.gain, 0.9, 0.015);
   }
 
-  async useGuitar(deviceId) {
-    this.stopTest();
-    this.stopRepeat();
-    this.releaseTone(0.05);
-    approach(this.ctx, this.testGain.gain, 0, 0.02);
-    await this.openMic(deviceId);
-    approach(this.ctx, this.micGain.gain, 1, 0.03);
+  setSpeakers(on) {
+    if (!this.clip || !this.ctx) return;
+    try { this.clip.disconnect(); } catch (err) { /* already */ }
+    this.outputConnected = false;
+    if (on && !this.recording) {
+      this.clip.connect(this.ctx.destination);
+      this.outputConnected = true;
+    }
   }
 
-  leaveGuitar() {
+  stopPlayback() {
+    const src = this.playSrc;
+    this.playSrc = null;
+    this.playingId = null;
+    if (!src) return;
+    try { src.onended = null; } catch (err) { /* already */ }
+    try { src.stop(); } catch (err) { /* already */ }
+    try { src.disconnect(); } catch (err) { /* already */ }
+  }
+
+  playBuffer(buffer, opts) {
+    if (!this.ctx || !buffer) return;
+    this.stopRepeat();
+    this.stopTest();
+    this.releaseTone(0.03);
+    this.stopVoices();
+    this.stopPlayback();
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const loop = !opts || opts.loop !== false;
+    const offset = opts && opts.offset > 0 ? opts.offset : 0;
+    const end = opts && opts.duration > 0 ? Math.min(buffer.duration, offset + opts.duration) : buffer.duration;
+    src.loop = loop;
+    if (loop) {
+      src.loopStart = offset;
+      src.loopEnd = Math.max(offset + 0.01, end);
+    }
+    src.connect(this.testGain);
+    const when = this.ctx.currentTime + 0.01;
+    if (loop) src.start(when, offset);
+    else src.start(when, offset, Math.max(0.01, end - offset));
+    this.playSrc = src;
+    this.playingId = opts && opts.id ? opts.id : "buffer";
+    src.onended = () => {
+      if (this.playSrc !== src) return;
+      this.playSrc = null;
+      this.playingId = null;
+      if (this.onPlayEnd) this.onPlayEnd();
+    };
+  }
+
+  libraryBuffer(id) {
+    const sr = this.ctx.sampleRate;
+    const key = id + ":" + sr;
+    if (!this.loopCache[key]) {
+      const samples = renderLoop(id, sr);
+      const buffer = this.ctx.createBuffer(1, samples.length, sr);
+      buffer.copyToChannel(samples, 0);
+      this.loopCache[key] = buffer;
+    }
+    return this.loopCache[key];
+  }
+
+  bufferFromSamples(samples, sampleRate) {
+    const sr = this.ctx.sampleRate;
+    const data = sampleRate && sampleRate !== sr ? resampleLinear(samples, sampleRate, sr) : samples;
+    const buffer = this.ctx.createBuffer(1, data.length, sr);
+    buffer.copyToChannel(data, 0);
+    return buffer;
+  }
+
+  async beginRecord() {
+    this.stopPlayback();
+    this.stopRepeat();
+    this.stopTest();
+    this.releaseTone(0.02);
+    this.stopVoices();
+    this.ensureContext();
+    if (this.ctx.state === "suspended") await this.ctx.resume();
+    this.recording = true;
+    if (!this.built) {
+      await this.loadWorklet();
+      this.build();
+      this.built = true;
+      this.running = true;
+      if (!this.raf) this.tick();
+    }
+    this.recording = true;
+    this.recordGen += 1;
+    const gen = this.recordGen;
+    this.setSpeakers(false);
+    approach(this.ctx, this.testGain.gain, 0, 0.01);
+    if (this.onRecordState) this.onRecordState(true);
+    let stream;
+    try {
+      stream = await this.requestMic();
+    } catch (err) {
+      if (this.recordGen === gen) this.cancelRecord();
+      throw err;
+    }
+    if (this.recordGen !== gen || !this.recording) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    this.micStream = stream;
+    this.micNode = this.ctx.createMediaStreamSource(stream);
+    this.recorder = createTakeRecorder(this.ctx.sampleRate);
+    this.recordLevel = 0;
+    // Pull the recorder through a media-stream sink, never the speakers.
+    this.recordSink = this.ctx.createMediaStreamDestination();
+    const onFrame = (frame) => {
+      if (!this.recording || !this.recorder) return;
+      const reason = this.recorder.push(frame);
+      this.recordLevel = this.recorder.level;
+      if (reason) this.finishRecord(reason);
+    };
+    let usedWorklet = false;
+    if (this.workletOk) {
+      try {
+        this.recNode = new AudioWorkletNode(this.ctx, "input-record", {
+          numberOfInputs: 1,
+          numberOfOutputs: 1,
+          outputChannelCount: [1],
+          channelCount: 1,
+        });
+        this.recNode.port.onmessage = (event) => onFrame(event.data);
+        usedWorklet = true;
+      } catch (err) {
+        this.recNode = null;
+      }
+    }
+    if (!usedWorklet) {
+      this.recNode = this.ctx.createScriptProcessor(2048, 1, 1);
+      this.recNode.onaudioprocess = (event) => {
+        onFrame(event.inputBuffer.getChannelData(0));
+        event.outputBuffer.getChannelData(0).fill(0);
+      };
+    }
+    this.micNode.connect(this.recNode);
+    this.recNode.connect(this.recordSink);
+  }
+
+  cancelRecord() {
+    this.recording = false;
+    this.recordLevel = 0;
+    this.teardownRecordGraph();
+    this.setSpeakers(true);
+    if (this.ctx && this.testGain) approach(this.ctx, this.testGain.gain, 0.9, 0.02);
+    if (this.onRecordState) this.onRecordState(false);
+  }
+
+  finishRecord(reason) {
+    if (!this.recording) return;
+    this.recording = false;
+    const take = this.recorder ? this.recorder.finish(reason) : null;
+    this.recordLevel = 0;
+    this.teardownRecordGraph();
+    this.setSpeakers(true);
+    if (this.ctx && this.testGain) approach(this.ctx, this.testGain.gain, 0.9, 0.03);
+    if (this.onRecordState) this.onRecordState(false);
+    if (take && this.onTake) this.onTake(take);
+  }
+
+  stopRecord() {
+    if (!this.recording) return;
+    if (!this.recorder) {
+      this.recordGen += 1;
+      this.cancelRecord();
+      return;
+    }
+    this.finishRecord("tap");
+  }
+
+  teardownRecordGraph() {
+    if (this.recNode) {
+      try { this.recNode.disconnect(); } catch (err) { /* already */ }
+      if (this.recNode.port) this.recNode.port.onmessage = null;
+      this.recNode.onaudioprocess = null;
+      this.recNode = null;
+    }
+    if (this.recordSink) {
+      try { this.recordSink.disconnect(); } catch (err) { /* already */ }
+      this.recordSink = null;
+    }
+    this.recorder = null;
     this.stopMic();
-    if (!this.ctx || !this.micGain) return;
-    approach(this.ctx, this.micGain.gain, 0, 0.02);
-    approach(this.ctx, this.testGain.gain, 0.9, 0.02);
   }
 
   async stop() {
@@ -2008,6 +2640,8 @@ class Engine {
     this.stopRepeat();
     this.releaseTone(0.05);
     this.stopVoices();
+    this.stopPlayback();
+    if (this.recording) this.stopRecord();
     this.stopMic();
     if (this.raf) cancelAnimationFrame(this.raf);
     if (this.ctx && this.ctx.state === "running") await this.ctx.suspend();
@@ -2027,11 +2661,8 @@ class Engine {
   build() {
     const ctx = this.ctx;
     this.inputGain = stereoGain(ctx);
-    this.micGain = ctx.createGain();
     this.testGain = ctx.createGain();
-    this.micGain.gain.value = 0;
     this.testGain.gain.value = 0;
-    this.micGain.connect(this.inputGain);
     this.testGain.connect(this.inputGain);
     this.analyser = ctx.createAnalyser();
     this.analyser.fftSize = 1024;
@@ -2067,7 +2698,8 @@ class Engine {
     this.safety.connect(this.dcBlock);
     this.dcBlock.connect(comp);
     comp.connect(clip);
-    clip.connect(ctx.destination);
+    this.clip = clip;
+    this.setSpeakers(true);
 
     this.shells.drive = makeShell(ctx, "replace");
     this.shells.drive.fx = buildDrive(ctx, this.shells.drive.head, this.shells.drive.wetOut, this.shells.drive.bag);
@@ -2436,31 +3068,6 @@ class Engine {
     prev.connect(this.duck);
   }
 
-  async applySource(source, deviceId) {
-    if (source !== "guitar") {
-      this.leaveGuitar();
-      return;
-    }
-    await this.useGuitar(deviceId);
-  }
-
-  async openMic(deviceId) {
-    const stream = await this.requestMic(deviceId);
-    if (this.micNode) {
-      try { this.micNode.disconnect(); } catch (err) { /* already */ }
-    }
-    if (this.micStream) this.micStream.getTracks().forEach((t) => t.stop());
-    this.micStream = stream;
-    this.micNode = this.ctx.createMediaStreamSource(stream);
-    this.micNode.connect(this.micGain);
-    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices && this.onDevices) {
-      try {
-        const all = await navigator.mediaDevices.enumerateDevices();
-        this.onDevices(all.filter((d) => d.kind === "audioinput"));
-      } catch (err) { /* labels can wait */ }
-    }
-  }
-
   async requestMic(deviceId) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error("This browser has no microphone input.");
@@ -2547,6 +3154,7 @@ class Engine {
   }
 
   playDown(spec) {
+    this.stopPlayback();
     this.stopRepeat();
     if (spec.sound === "tone") {
       this.stopTest();
@@ -2797,6 +3405,11 @@ class Engine {
 
   tick() {
     if (!this.running || !this.analyser) return;
+    if (this.recording) {
+      if (this.onMeter) this.onMeter(this.recordLevel || 0);
+      this.raf = requestAnimationFrame(() => this.tick());
+      return;
+    }
     this.analyser.getFloatTimeDomainData(this.buf);
     let s = 0;
     let peak = 0;
@@ -2871,9 +3484,11 @@ function previewStats(buffer) {
   return { peak, tail, nans };
 }
 
-async function renderPreview(state, taps) {
+async function renderPreview(state, loopId) {
   const sr = 48000;
-  const seconds = 6;
+  const id = loopId || "chords";
+  const samples = renderLoop(id, sr);
+  const seconds = samples.length / sr + 0.35;
   const ctx = new OfflineAudioContext(2, Math.ceil(sr * seconds), sr);
   const eng = new Engine();
   eng.ctx = ctx;
@@ -2883,11 +3498,11 @@ async function renderPreview(state, taps) {
   eng.reconnectNow();
   eng.sync(state, false);
   eng.testGain.gain.setValueAtTime(0.9, 0);
-  const count = taps > 0 ? taps : 1;
-  const freq = noteFrequency(state.player.note, state.player.octave);
-  for (let i = 0; i < count; i++) eng.pluck(0.08 + i * 0.12, freq, 0.28);
-  const buffer = await ctx.startRendering();
-  return previewStats(buffer);
+  const buffer = ctx.createBuffer(1, samples.length, sr);
+  buffer.copyToChannel(samples, 0);
+  eng.playBuffer(buffer, { loop: true, id });
+  const rendered = await ctx.startRendering();
+  return previewStats(rendered);
 }
 
 const engine = new Engine();
@@ -2995,12 +3610,25 @@ function playerSpec() {
   };
 }
 
+let nowPlaying = "";
+let noteOpen = false;
+let currentTake = null;
+
+function looping(id) {
+  if (!state.looping || state.looping[id] === undefined) return true;
+  return !!state.looping[id];
+}
+
+function clock(seconds) {
+  const s = Math.max(0, Number(seconds) || 0);
+  if (s < 60) return s.toFixed(1) + "s";
+  const m = Math.floor(s / 60);
+  const r = Math.floor(s % 60);
+  return m + ":" + (r < 10 ? "0" : "") + r;
+}
+
 function paintPlayer() {
   const player = state.player;
-  const guitar = state.source === "guitar";
-  document.getElementById("player").hidden = guitar;
-  document.getElementById("guitarBox").hidden = !guitar;
-  document.getElementById("useGuitarNow").hidden = !!engine.micStream;
   document.getElementById("noteReadout").textContent = player.note + player.octave;
   document.getElementById("octaveDown").disabled = player.octave <= 2;
   document.getElementById("octaveUp").disabled = player.octave >= 5;
@@ -3020,6 +3648,7 @@ function paintPlayer() {
   repeat.classList.toggle("on", player.repeat);
   repeat.setAttribute("aria-pressed", String(player.repeat));
   if (engine.repeatSpec) engine.updateRepeat(playerSpec());
+  paintLibrary();
 }
 
 function renderPlayer() {
@@ -3031,6 +3660,63 @@ function renderPlayer() {
   ).join("");
   document.getElementById("repeat").innerHTML = choiceInner(REPEAT_COPY);
   paintPlayer();
+}
+
+function renderLibrary() {
+  document.getElementById("loopList").innerHTML = LOOPS.map((loop) =>
+    '<article class="loop" data-loop="' + loop.id + '">'
+    + "<h3>" + esc(loop.name) + "</h3>"
+    + "<p>" + esc(loop.hint) + "</p>"
+    + '<div class="loop-actions">'
+    + '<button type="button" data-act="play">Play</button>'
+    + '<button type="button" data-act="stop">Stop</button>'
+    + '<button type="button" data-act="loop" aria-pressed="true">Loop on</button>'
+    + "</div></article>"
+  ).join("");
+  renderPlayer();
+}
+
+function paintLibrary() {
+  const cards = document.querySelectorAll("#loopList .loop");
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+    const id = card.dataset.loop;
+    const on = nowPlaying === id;
+    card.classList.toggle("playing", on);
+    const loopOn = id === "notes" ? !!state.player.repeat : looping(id);
+    const toggle = card.querySelector('[data-act="loop"]');
+    toggle.setAttribute("aria-pressed", String(loopOn));
+    toggle.textContent = loopOn ? "Loop on" : "Loop off";
+    const play = card.querySelector('[data-act="play"]');
+    play.classList.toggle("on", on);
+    play.disabled = !!engine.recording;
+  }
+  const notes = document.getElementById("notePlayer");
+  if (notes) notes.hidden = !(noteOpen || nowPlaying === "notes");
+  paintRecord();
+}
+
+function paintRecord() {
+  const recording = !!engine.recording;
+  document.getElementById("recordBtn").hidden = recording;
+  document.getElementById("recordingBar").hidden = !recording;
+  const card = document.getElementById("takeCard");
+  card.hidden = !currentTake;
+  if (!currentTake) return;
+  const seconds = currentTake.samples.length / currentTake.sampleRate;
+  const loopOn = currentTake.loop !== false;
+  document.getElementById("takeHint").textContent = clock(seconds) + " recorded. It loops through the pedals. Turn a knob and you hear it on the next pass.";
+  document.getElementById("playTake").classList.toggle("on", nowPlaying === "take");
+  document.getElementById("playTake").disabled = seconds < 0.05;
+  const loopBtn = document.getElementById("takeLoop");
+  loopBtn.setAttribute("aria-pressed", String(loopOn));
+  loopBtn.textContent = loopOn ? "Loop on" : "Loop off";
+  const start = currentTake.trimStart || 0;
+  const end = currentTake.trimEnd > 0 ? currentTake.trimEnd : seconds;
+  document.getElementById("trimStart").value = String(Math.round(1000 * start / Math.max(seconds, 0.01)));
+  document.getElementById("trimEnd").value = String(Math.round(1000 * end / Math.max(seconds, 0.01)));
+  document.getElementById("trimStartLabel").textContent = clock(start);
+  document.getElementById("trimEndLabel").textContent = clock(end);
 }
 
 function choiceInner(copy) {
@@ -3187,25 +3873,6 @@ function commitOrder(next) {
   scheduleSave();
 }
 
-function fillDevices(list) {
-  const sel = document.getElementById("device");
-  const current = state.deviceId;
-  sel.replaceChildren();
-  const def = document.createElement("option");
-  def.value = "";
-  def.textContent = "Default microphone";
-  sel.appendChild(def);
-  const devices = list || [];
-  for (let i = 0; i < devices.length; i++) {
-    const o = document.createElement("option");
-    o.value = devices[i].deviceId;
-    o.textContent = devices[i].label || "Microphone";
-    sel.appendChild(o);
-  }
-  const known = [...sel.options].some((o) => o.value === current);
-  sel.value = known ? current : "";
-}
-
 let playDownAt = 0;
 let noteHeld = false;
 let pressId = 0;
@@ -3213,6 +3880,8 @@ let pressId = 0;
 async function playDown() {
   const id = ++pressId;
   noteHeld = true;
+  nowPlaying = "notes";
+  noteOpen = true;
   playDownAt = performance.now();
   engine.ensureContext();
   try {
@@ -3232,29 +3901,160 @@ function playUp() {
   engine.playUp(playerSpec(), performance.now() - playDownAt);
 }
 
-async function useGuitar() {
+async function playLibrary(id) {
+  if (engine.recording) {
+    setStatus("Stop recording first.");
+    return;
+  }
+  if (id === "notes") {
+    noteOpen = true;
+    nowPlaying = "notes";
+    if (engine.ctx) engine.stopPlayback();
+    paintLibrary();
+    playDown();
+    return;
+  }
+  noteOpen = false;
   engine.ensureContext();
   try {
     await engine.prepare(state);
-    await engine.useGuitar(state.deviceId);
-    state.source = "guitar";
-    saveNow();
-    paintPlayer();
-    setStatus("Guitar is on.");
+    engine.playBuffer(engine.libraryBuffer(id), { loop: looping(id), id });
+    nowPlaying = id;
+    setStatus("");
   } catch (err) {
-    state.source = "test";
-    if (engine.ctx) engine.leaveGuitar();
-    paintPlayer();
-    setStatus("The browser didn't allow the microphone. You can still play notes.");
+    setStatus("Audio didn't start. Tap Play again.");
   }
+  paintLibrary();
 }
 
-function showNotes() {
-  state.source = "test";
-  if (engine.ctx) engine.leaveGuitar();
-  paintPlayer();
-  saveNow();
+function stopLibrary(id) {
+  if (id === "notes") {
+    nowPlaying = "";
+    engine.stopRepeat();
+    engine.stopTest();
+    engine.releaseTone(0.05);
+    engine.stopVoices();
+  } else if (engine.playingId === id) {
+    engine.stopPlayback();
+    nowPlaying = "";
+  }
+  paintLibrary();
+}
+
+function toggleLoop(id) {
+  if (id === "notes") {
+    state.player.repeat = !state.player.repeat;
+    if (!state.player.repeat) engine.stopRepeat();
+    scheduleSave();
+    paintPlayer();
+    return;
+  }
+  if (!state.looping) state.looping = {};
+  state.looping[id] = !looping(id);
+  scheduleSave();
+  if (nowPlaying === id && engine.ctx) {
+    engine.playBuffer(engine.libraryBuffer(id), { loop: looping(id), id });
+  }
+  paintLibrary();
+}
+
+async function startRecord() {
+  if (engine.recording) return;
+  nowPlaying = "";
+  if (engine.ctx) engine.stopPlayback();
+  engine.ensureContext();
   setStatus("");
+  try {
+    await engine.beginRecord();
+  } catch (err) {
+    setStatus("The browser didn't allow the microphone. You can still play loops.");
+  }
+  paintLibrary();
+}
+
+async function playCurrentTake() {
+  if (!currentTake || engine.recording) return;
+  const seconds = currentTake.samples.length / currentTake.sampleRate;
+  if (seconds < 0.05) return;
+  engine.ensureContext();
+  try {
+    await engine.prepare(state);
+    const start = currentTake.trimStart || 0;
+    const end = currentTake.trimEnd > 0 ? currentTake.trimEnd : seconds;
+    const buffer = engine.bufferFromSamples(currentTake.samples, currentTake.sampleRate);
+    engine.playBuffer(buffer, {
+      loop: currentTake.loop !== false,
+      offset: start,
+      duration: Math.max(0.05, end - start),
+      id: "take",
+    });
+    nowPlaying = "take";
+    noteOpen = false;
+    setStatus("");
+  } catch (err) {
+    setStatus("Audio didn't start. Tap Play again.");
+  }
+  paintLibrary();
+}
+
+function readTrim() {
+  if (!currentTake) return;
+  const seconds = currentTake.samples.length / currentTake.sampleRate;
+  let start = Number(document.getElementById("trimStart").value) / 1000 * seconds;
+  let end = Number(document.getElementById("trimEnd").value) / 1000 * seconds;
+  if (end < start + 0.05) end = Math.min(seconds, start + 0.05);
+  currentTake.trimStart = start;
+  currentTake.trimEnd = end;
+  document.getElementById("trimStartLabel").textContent = clock(start);
+  document.getElementById("trimEndLabel").textContent = clock(end);
+}
+
+function openTakes() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("effects-lab-takes", 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains("takes")) db.createObjectStore("takes");
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function persistTake() {
+  if (!currentTake || !currentTake.samples) return;
+  try {
+    const db = await openTakes();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readwrite");
+      tx.objectStore("takes").put({
+        sampleRate: currentTake.sampleRate,
+        samples: currentTake.samples,
+        trimStart: currentTake.trimStart || 0,
+        trimEnd: currentTake.trimEnd || 0,
+        loop: currentTake.loop !== false,
+      }, "last");
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (err) { /* private mode */ }
+}
+
+async function loadTake() {
+  try {
+    const db = await openTakes();
+    const row = await new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readonly");
+      const req = tx.objectStore("takes").get("last");
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    if (!row || !row.samples || row.samples.length < 8) return;
+    currentTake = row;
+    paintRecord();
+  } catch (err) { /* first visit */ }
 }
 
 function choosePreset(id) {
@@ -3349,20 +4149,29 @@ function init() {
   renderBoard();
   renderAdd();
   chainLabel();
-  renderPlayer();
+  renderLibrary();
   paintFromState();
-  fillDevices([]);
+  loadTake();
 
   engine.onMeter = paintMeter;
+  engine.onPlayEnd = () => {
+    if (nowPlaying !== "notes") nowPlaying = "";
+    paintLibrary();
+  };
+  engine.onRecordState = () => paintLibrary();
+  engine.onTake = (take) => {
+    currentTake = take;
+    nowPlaying = "";
+    paintLibrary();
+    persistTake();
+    if (take.heard && take.samples.length > take.sampleRate * 0.05) playCurrentTake();
+    else setStatus("That take was quiet. Trim it, or record again.");
+  };
   engine.onRunaway = (on) => {
     document.getElementById("runaway").hidden = !on;
     if (on) setStatus("");
   };
   document.getElementById("unmute").addEventListener("click", () => engine.unmute());
-  engine.onDevices = (list) => {
-    fillDevices(list);
-    paintPlayer();
-  };
 
   const playNote = document.getElementById("playNote");
   playNote.addEventListener("pointerdown", (e) => {
@@ -3425,26 +4234,43 @@ function init() {
     paintPlayer();
     scheduleSave();
   });
-  document.getElementById("useGuitar").addEventListener("click", useGuitar);
-  document.getElementById("useGuitarNow").addEventListener("click", useGuitar);
-  document.getElementById("playNotes").addEventListener("click", showNotes);
+  document.getElementById("loopList").addEventListener("click", (e) => {
+    const card = e.target.closest("[data-loop]");
+    const btn = e.target.closest("[data-act]");
+    if (!card || !btn) return;
+    const id = card.dataset.loop;
+    if (btn.dataset.act === "play") playLibrary(id);
+    else if (btn.dataset.act === "stop") stopLibrary(id);
+    else toggleLoop(id);
+  });
+  document.getElementById("recordBtn").addEventListener("click", startRecord);
+  document.getElementById("stopRecord").addEventListener("click", () => engine.stopRecord());
+  document.getElementById("reRecord").addEventListener("click", startRecord);
+  document.getElementById("playTake").addEventListener("click", playCurrentTake);
+  document.getElementById("stopTake").addEventListener("click", () => {
+    engine.stopPlayback();
+    nowPlaying = "";
+    paintLibrary();
+  });
+  document.getElementById("takeLoop").addEventListener("click", () => {
+    if (!currentTake) return;
+    currentTake.loop = !(currentTake.loop !== false);
+    persistTake();
+    if (nowPlaying === "take") playCurrentTake();
+    else paintRecord();
+  });
+  document.getElementById("trimStart").addEventListener("input", readTrim);
+  document.getElementById("trimEnd").addEventListener("input", readTrim);
+  const applyTrim = () => {
+    readTrim();
+    persistTake();
+    if (nowPlaying === "take") playCurrentTake();
+  };
+  document.getElementById("trimStart").addEventListener("change", applyTrim);
+  document.getElementById("trimEnd").addEventListener("change", applyTrim);
   document.getElementById("presets").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-preset]");
     if (btn) choosePreset(btn.dataset.preset);
-  });
-  document.getElementById("device").addEventListener("change", async (e) => {
-    state.deviceId = e.target.value;
-    scheduleSave();
-    if (state.source === "guitar" && engine.micStream) {
-      engine.ensureContext();
-      try {
-        await engine.prepare(state);
-        await engine.openMic(state.deviceId);
-        setStatus("Guitar is on.");
-      } catch (err) {
-        setStatus("Couldn't open that input.");
-      }
-    }
   });
   document.getElementById("addRow").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-add]");
@@ -3578,14 +4404,6 @@ function init() {
 
   window.matchMedia("(min-width: 900px)").addEventListener("change", nudgeGlyphs);
   window.addEventListener("pagehide", saveNow);
-  if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
-    navigator.mediaDevices.addEventListener("devicechange", () => {
-      if (!navigator.mediaDevices.enumerateDevices) return;
-      navigator.mediaDevices.enumerateDevices().then((all) => {
-        fillDevices(all.filter((d) => d.kind === "audioinput"));
-      }).catch(() => {});
-    });
-  }
 
   window.__lab = {
     get state() { return state; },
@@ -3596,11 +4414,15 @@ function init() {
     get constraints() { return engine.constraints; },
     get attempts() { return engine.attempts; },
     get reverbMode() { return engine.reverbMode; },
-    preview(id, taps) {
+    get outputConnected() { return !!engine.outputConnected; },
+    get recording() { return !!engine.recording; },
+    get recordedSamples() { return engine.recorder ? engine.recorder.samples : 0; },
+    get micLive() { return !!(engine.micStream && engine.micStream.getTracks().some((track) => track.readyState === "live")); },
+    loops: LOOPS,
+    preview(id, loopId) {
       const base = initialState();
       const next = id ? applyPreset(base, id) : base;
-      next.player = defaultPlayer();
-      return renderPreview(next, taps);
+      return renderPreview(next, loopId || "chords");
     },
     defaultKnob(pedal, param) { return defaultKnobPosition(pedal, param); },
     APP_CONFIG,

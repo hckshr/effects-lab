@@ -57,7 +57,101 @@ h1 {
   max-width: 40rem;
 }
 
-#playNote, #useGuitarNow {
+h2 {
+  margin: 18px 0 0;
+  font-size: 1.25rem;
+}
+
+.hint {
+  margin: 6px 0 10px;
+  color: var(--muted);
+}
+
+.loop {
+  margin-top: 10px;
+  padding: 12px 12px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.loop h3, #takeCard h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.loop p, #takeCard .hint { margin: 4px 0 8px; }
+
+.loop.playing { border-color: var(--gold); }
+
+.loop-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.loop-actions button, #recordBtn, #stopRecord, #reRecord {
+  min-height: 56px;
+  border-radius: 12px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #241f1a;
+  touch-action: manipulation;
+}
+
+.loop-actions button { flex: 1; font-weight: 700; }
+.loop-actions button.on { background: var(--cream); color: var(--ink); border-color: transparent; }
+
+#recordBtn, #stopRecord {
+  width: 100%;
+  font-size: 1.35rem;
+  font-weight: 750;
+}
+
+#recordBtn {
+  background: var(--cream);
+  color: var(--ink);
+  border: 0;
+  box-shadow: 0 8px 0 #6d6456;
+}
+
+#stopRecord {
+  background: #f0d2c4;
+  color: #2a120e;
+  border: 0;
+  box-shadow: 0 8px 0 #6a4036;
+}
+
+#recordingBar {
+  margin-top: 8px;
+}
+
+#recordingBar p { color: var(--muted); }
+
+#takeCard {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(243, 234, 215, 0.16);
+  background: #1a1815;
+}
+
+.trim {
+  display: block;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.trim input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  min-height: 44px;
+  accent-color: var(--gold);
+}
+
+#reRecord { width: 100%; margin-top: 8px; color: var(--muted); background: transparent; }
+
+#playNote, #recordBtn {
   width: 100%;
   min-height: 76px;
   border: 0;
@@ -71,7 +165,7 @@ h1 {
   touch-action: none;
 }
 
-#playNote:active, #playNote.is-down, #useGuitarNow:active {
+#playNote:active, #playNote.is-down, #recordBtn:active, #stopRecord:active {
   transform: translateY(2px);
   box-shadow: 0 6px 0 #6d6456;
 }
