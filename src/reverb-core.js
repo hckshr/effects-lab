@@ -2,7 +2,7 @@
 // early taps, and a short modulated comb when the type is spring.
 // Loop gain is per-line from T60 and hard-capped so the tank cannot run away.
 
-export const MAX_REVERB_LOOP = 0.98;
+export const MAX_REVERB_LOOP = 0.95;
 
 export const DELAYS_48K = {
   room: [983, 1109, 1249, 1409, 1597, 1801, 2039, 2297],
@@ -62,7 +62,9 @@ class DelayLine {
     this.w = 0;
   }
   write(x) {
-    if (x > -1e-20 && x < 1e-20) x = 0;
+    if (!Number.isFinite(x) || (x > -1e-30 && x < 1e-30)) x = 0;
+    else if (x > 2) x = 2;
+    else if (x < -2) x = -2;
     this.buf[this.w] = x;
     this.w++;
     if (this.w >= this.max) this.w = 0;
@@ -247,7 +249,11 @@ export class ReverbCore {
         this.curLen[d] += (this.targetLen[d] - this.curLen[d]) * 0.00012;
         this.smGain[d] += (this.gainTarget[d] - this.smGain[d]) * 0.002;
       }
-      const x0 = input[i] || 0;
+      let x0 = input[i] || 0;
+      if (!Number.isFinite(x0) || x0 > 4 || x0 < -4) {
+        this.clear();
+        x0 = 0;
+      }
       this.hpZ += this.hpC * (x0 - this.hpZ);
       const x = x0 - this.hpZ;
       const pre = this.preCur >= 1.5 ? this.early.read(this.preCur) : x;
@@ -305,9 +311,9 @@ export class ReverbCore {
       const side = 0.5 * (l - r) * this.smWidth;
       let ol = this.dcL.process(mid + side);
       let orr = this.dcR.process(mid - side);
-      if (ol > 2) ol = 2;
+      if (!Number.isFinite(ol) || ol > 2) ol = ol > 0 && Number.isFinite(ol) ? 2 : 0;
       else if (ol < -2) ol = -2;
-      if (orr > 2) orr = 2;
+      if (!Number.isFinite(orr) || orr > 2) orr = orr > 0 && Number.isFinite(orr) ? 2 : 0;
       else if (orr < -2) orr = -2;
       outL[i] = ol;
       outR[i] = orr;

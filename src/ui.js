@@ -220,6 +220,19 @@ function renderPresets() {
   highlightPreset();
 }
 
+function resetKnob(pedal, param, el) {
+  writeKnob(pedal, param, defaultKnobPosition(pedal, param));
+  const node = el || document.querySelector('.knob[data-pedal="' + pedal + '"][data-param="' + param + '"]');
+  if (!node) return;
+  node.classList.remove("flash");
+  void node.offsetWidth;
+  node.classList.add("flash");
+  clearTimeout(node._flash);
+  node._flash = setTimeout(() => node.classList.remove("flash"), 700);
+}
+
+let lastKnobTap = { key: "", t: 0 };
+
 function writeKnob(pedal, param, value) {
   const v = clamp01(value);
   if (pedal === "global") {
@@ -440,6 +453,11 @@ function init() {
   fillDevices([]);
 
   engine.onMeter = paintMeter;
+  engine.onRunaway = (on) => {
+    document.getElementById("runaway").hidden = !on;
+    if (on) setStatus("");
+  };
+  document.getElementById("unmute").addEventListener("click", () => engine.unmute());
   engine.onDevices = (list) => {
     fillDevices(list);
     paintPlayer();
@@ -595,17 +613,29 @@ function init() {
     e.preventDefault();
     const pedal = el.dataset.pedal;
     const param = el.dataset.param;
+    const key = pedal + ":" + param;
+    const now = performance.now();
+    if (lastKnobTap.key === key && isDoubleTap(lastKnobTap.t, now)) {
+      lastKnobTap = { key: "", t: 0 };
+      resetKnob(pedal, param, el);
+      return;
+    }
     const start = readKnob(pedal, param);
     const x0 = e.clientX;
     const y0 = e.clientY;
+    let moved = false;
     const move = (ev) => {
       const dy = y0 - ev.clientY;
       const dx = ev.clientX - x0;
+      if (Math.hypot(dx, dy) > 8) moved = true;
       const delta = Math.abs(dx) > Math.abs(dy) ? dx : dy;
       const scale = ev.shiftKey ? 1 / 420 : 1 / 150;
       writeKnob(pedal, param, start + delta * scale);
     };
-    const up = () => {
+    const up = (ev) => {
+      const dist = Math.hypot((ev.clientX || x0) - x0, (ev.clientY || y0) - y0);
+      if (!moved && dist < 8) lastKnobTap = { key, t: performance.now() };
+      else lastKnobTap = { key: "", t: 0 };
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
@@ -613,6 +643,12 @@ function init() {
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
+  });
+  document.addEventListener("dblclick", (e) => {
+    const el = e.target.closest && e.target.closest(".knob");
+    if (!el) return;
+    e.preventDefault();
+    resetKnob(el.dataset.pedal, el.dataset.param, el);
   });
 
   document.addEventListener("wheel", (e) => {
@@ -659,6 +695,13 @@ function init() {
     get constraints() { return engine.constraints; },
     get attempts() { return engine.attempts; },
     get reverbMode() { return engine.reverbMode; },
+    preview(id, taps) {
+      const base = initialState();
+      const next = id ? applyPreset(base, id) : base;
+      next.player = defaultPlayer();
+      return renderPreview(next, taps);
+    },
+    defaultKnob(pedal, param) { return defaultKnobPosition(pedal, param); },
     APP_CONFIG,
   };
 }

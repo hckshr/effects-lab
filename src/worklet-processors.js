@@ -8,6 +8,9 @@ class ReverbProcessor extends AudioWorkletProcessor {
     this.core = new ReverbCore(sampleRate);
     this.zero = new Float32Array(128);
     this.mix = new Float32Array(128);
+    this.port.onmessage = (event) => {
+      if (event.data === "clear") this.core.clear();
+    };
   }
 
   static get parameterDescriptors() {
